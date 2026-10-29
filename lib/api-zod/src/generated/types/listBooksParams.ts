@@ -13,5 +13,6 @@ search?: string;
 status?: BookStatus;
 genre?: string;
 starredOnly?: boolean;
+isOwned?: boolean;
 sort?: ListBooksSort;
 };

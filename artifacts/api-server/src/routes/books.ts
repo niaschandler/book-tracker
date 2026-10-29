@@ -1,4 +1,4 @@
-import { and, arrayContains, asc, desc, eq, ilike, inArray, lte, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getAuth } from "@clerk/express";
 import { Router, type IRouter, type RequestHandler } from "express";
 import {
@@ -24,13 +24,13 @@ import {
   ExportBooksResponse,
 } from "@workspace/api-zod";
 import {
-  booksTable,
   db,
+  readingLogTable,
   starsTable,
   usersTable,
-  type Book,
-  type InsertBook,
 } from "@workspace/db";
+import { createLibraryBook, getLibraryBook, listLibraryBooks, toApiBook, updateLibraryBook } from "../lib/library";
+import { normalizeBookInput } from "../lib/book-validation";
 
 const router: IRouter = Router();
 
@@ -73,80 +73,42 @@ async function listStarredBookIds(userId: number): Promise<Set<number>> {
   return new Set(rows.map((row) => row.bookId));
 }
 
-function toApiBook(book: Book, starredIds: Set<number>) {
-  return { ...book, starred: starredIds.has(book.id) };
-}
-
-async function getOwnedBook(userId: number, id: number): Promise<Book | null> {
-  const [book] = await db
-    .select()
-    .from(booksTable)
-    .where(and(eq(booksTable.id, id), eq(booksTable.userId, userId)))
-    .limit(1);
-  return book ?? null;
-}
-
-function normalizeBookInput(
-  input: ReturnType<typeof CreateBookBody.parse>,
-  userId: number,
-): InsertBook {
-  return {
-    userId,
-    title: input.title.trim(),
-    author: input.author.trim(),
-    genre: input.genre?.trim() || null,
-    pages: input.pages ?? null,
-    rating: input.rating ?? null,
-    status: input.status,
-    moodTags: (input.moodTags ?? []).map((tag) => tag.trim()).filter(Boolean),
-    coverUrl: input.coverUrl ?? null,
-    openLibraryId: input.openLibraryId ?? null,
-    publishedYear: input.publishedYear ?? null,
-    notes: input.notes ?? null,
-    startedOn: input.startedOn ?? null,
-    finishedOn: input.finishedOn ?? null,
-  };
-}
-
 router.get("/books", requireAuth, async (req, res): Promise<void> => {
-  const parsed = ListBooksQueryParams.safeParse(req.query);
+  const query = { ...req.query };
+  // Avoid JavaScript's Boolean("false") === true coercion in query validators.
+  for (const field of ["starredOnly", "isOwned"]) {
+    if (query[field] !== undefined && query[field] !== "true" && query[field] !== "false") {
+      res.status(400).json({ error: `${field} must be true or false.` });
+      return;
+    }
+  }
+  const parsed = ListBooksQueryParams.safeParse({
+    ...query,
+    ...(query.starredOnly !== undefined ? { starredOnly: query.starredOnly === "true" } : {}),
+    ...(query.isOwned !== undefined ? { isOwned: query.isOwned === "true" } : {}),
+  });
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const filters = [eq(booksTable.userId, userId)];
-  if (parsed.data.search?.trim()) {
-    const term = `%${parsed.data.search.trim()}%`;
-    filters.push(sql`(${ilike(booksTable.title, term)} OR ${ilike(booksTable.author, term)})`);
-  }
-  if (parsed.data.status) filters.push(eq(booksTable.status, parsed.data.status));
-  if (parsed.data.genre) filters.push(eq(booksTable.genre, parsed.data.genre));
-
   const starredIds = await listStarredBookIds(userId);
-  if (parsed.data.starredOnly) {
-    if (starredIds.size === 0) {
-      res.json(ListBooksResponse.parse([]));
-      return;
-    }
-    filters.push(inArray(booksTable.id, [...starredIds]));
-  }
-
+  const search = parsed.data.search?.trim().toLocaleLowerCase();
+  const rows = (await listLibraryBooks(userId)).filter((book) =>
+    (!search || `${book.title} ${book.authors.join(" ")}`.toLocaleLowerCase().includes(search)) &&
+    (!parsed.data.status || book.status === parsed.data.status) &&
+    (!parsed.data.genre || book.genre === parsed.data.genre) &&
+    (parsed.data.isOwned === undefined || book.isOwned === parsed.data.isOwned) &&
+    (!parsed.data.starredOnly || starredIds.has(book.catalogBookId)),
+  );
   const sort = parsed.data.sort ?? "newest";
-  const orderBy =
-    sort === "title"
-      ? asc(booksTable.title)
-      : sort === "rating"
-        ? desc(booksTable.rating)
-        : sort === "pages"
-          ? desc(booksTable.pages)
-          : desc(booksTable.createdAt);
-  const rows = await db
-    .select()
-    .from(booksTable)
-    .where(and(...filters))
-    .orderBy(orderBy, asc(booksTable.id));
+  rows.sort((a, b) => (
+    sort === "title" ? a.title.localeCompare(b.title) :
+    sort === "rating" ? (b.rating ?? -1) - (a.rating ?? -1) :
+    sort === "pages" ? (b.pages ?? -1) - (a.pages ?? -1) :
+    b.createdAt.getTime() - a.createdAt.getTime()
+  ) || a.id - b.id);
 
   res.json(ListBooksResponse.parse(rows.map((book) => toApiBook(book, starredIds))));
 });
@@ -157,38 +119,23 @@ router.post("/books", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  if (!parsed.data.title.trim() || !parsed.data.author.trim()) {
-    res.status(400).json({ error: "Title and author are required." });
+  let input;
+  try {
+    input = normalizeBookInput(parsed.data);
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
     return;
   }
-
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const [book] = await db
-    .insert(booksTable)
-    .values(normalizeBookInput(parsed.data, userId))
-    .returning();
-  res.status(201).json(CreateBookResponse.parse({ ...book, starred: false }));
+  const book = await createLibraryBook(userId, input);
+  res.status(201).json(CreateBookResponse.parse(toApiBook(book, new Set())));
 });
 
 router.get("/books/export", requireAuth, async (_req, res): Promise<void> => {
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const books = await db
-    .select({
-      title: booksTable.title,
-      author: booksTable.author,
-      genre: booksTable.genre,
-      pages: booksTable.pages,
-      rating: booksTable.rating,
-      status: booksTable.status,
-      moodTags: booksTable.moodTags,
-      notes: booksTable.notes,
-      startedOn: booksTable.startedOn,
-      finishedOn: booksTable.finishedOn,
-    })
-    .from(booksTable)
-    .where(eq(booksTable.userId, userId))
-    .orderBy(asc(booksTable.title));
-  res.json(ExportBooksResponse.parse(books));
+  const books = await listLibraryBooks(userId);
+  books.sort((a, b) => a.title.localeCompare(b.title));
+  res.json(ExportBooksResponse.parse(books.map((book) => toApiBook(book, new Set()))));
 });
 
 router.get("/books/next", requireAuth, async (req, res): Promise<void> => {
@@ -198,17 +145,12 @@ router.get("/books/next", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const filters = [
-    eq(booksTable.userId, userId),
-    eq(booksTable.status, "want_to_read"),
-  ];
-  if (parsed.data.genre) filters.push(eq(booksTable.genre, parsed.data.genre));
-  if (parsed.data.maxPages) filters.push(lte(booksTable.pages, parsed.data.maxPages));
-  if (parsed.data.moodTag) {
-    filters.push(arrayContains(booksTable.moodTags, [parsed.data.moodTag]));
-  }
-
-  const matches = await db.select().from(booksTable).where(and(...filters));
+  const matches = (await listLibraryBooks(userId)).filter((book) =>
+    book.status === "want_to_read" &&
+    (!parsed.data.genre || book.genre === parsed.data.genre) &&
+    (!parsed.data.maxPages || (book.pages !== null && book.pages <= parsed.data.maxPages)) &&
+    (!parsed.data.moodTag || book.moodTags.includes(parsed.data.moodTag)),
+  );
   if (matches.length === 0) {
     res.json(PickNextBookResponse.parse({ book: null }));
     return;
@@ -225,7 +167,7 @@ router.get("/books/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const book = await getOwnedBook(userId, parsed.data.id);
+  const book = await getLibraryBook(userId, parsed.data.id);
   if (!book) {
     res.status(404).json({ error: "Book not found." });
     return;
@@ -254,30 +196,28 @@ router.patch("/books/:id", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const current = await getOwnedBook(userId, params.data.id);
+  const current = await getLibraryBook(userId, params.data.id);
   if (!current) {
     res.status(404).json({ error: "Book not found." });
     return;
   }
-  const patch = {
-    ...body.data,
-    ...(body.data.title !== undefined ? { title: body.data.title.trim() } : {}),
-    ...(body.data.author !== undefined ? { author: body.data.author.trim() } : {}),
-    ...(body.data.genre !== undefined
-      ? { genre: body.data.genre?.trim() || null }
-      : {}),
-    ...(body.data.moodTags !== undefined
-      ? {
-          moodTags: body.data.moodTags.map((tag) => tag.trim()).filter(Boolean),
-        }
-      : {}),
-    updatedAt: new Date(),
-  };
-  const [book] = await db
-    .update(booksTable)
-    .set(patch)
-    .where(and(eq(booksTable.id, params.data.id), eq(booksTable.userId, userId)))
-    .returning();
+  let input;
+  try {
+    input = normalizeBookInput({
+      ...current, author: current.authors.join(", "), ...body.data,
+      authors: body.data.authors ?? (body.data.author !== undefined ? [body.data.author] : current.authors),
+    });
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+    return;
+  }
+  const catalogChanged = ["title", "author", "authors", "genre", "pages", "publishedYear", "isbn", "description", "coverUrl", "openLibraryId"]
+    .some((field) => Object.prototype.hasOwnProperty.call(body.data, field));
+  const book = await updateLibraryBook(userId, params.data.id, input, catalogChanged);
+  if (!book) {
+    res.status(404).json({ error: "Book not found." });
+    return;
+  }
   const starredIds = await listStarredBookIds(userId);
   res.json(UpdateBookResponse.parse(toApiBook(book, starredIds)));
 });
@@ -290,9 +230,9 @@ router.delete("/books/:id", requireAuth, async (req, res): Promise<void> => {
   }
   const userId = await resolveUserId(res.locals.clerkUserId as string);
   const [deleted] = await db
-    .delete(booksTable)
-    .where(and(eq(booksTable.id, parsed.data.id), eq(booksTable.userId, userId)))
-    .returning({ id: booksTable.id });
+    .delete(readingLogTable)
+    .where(and(eq(readingLogTable.id, parsed.data.id), eq(readingLogTable.userId, userId)))
+    .returning({ id: readingLogTable.id });
   if (!deleted) {
     res.status(404).json({ error: "Book not found." });
     return;
@@ -312,7 +252,7 @@ router.put("/books/:id/star", requireAuth, async (req, res): Promise<void> => {
     return;
   }
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const book = await getOwnedBook(userId, params.data.id);
+  const book = await getLibraryBook(userId, params.data.id);
   if (!book) {
     res.status(404).json({ error: "Book not found." });
     return;
@@ -320,7 +260,7 @@ router.put("/books/:id/star", requireAuth, async (req, res): Promise<void> => {
   if (body.data.starred) {
     await db
       .insert(starsTable)
-      .values({ userId, bookId: book.id })
+      .values({ userId, bookId: book.catalogBookId })
       .onConflictDoNothing();
   } else {
     await db
@@ -328,7 +268,7 @@ router.put("/books/:id/star", requireAuth, async (req, res): Promise<void> => {
       .where(
         and(
           eq(starsTable.userId, userId),
-          eq(starsTable.bookId, book.id),
+          eq(starsTable.bookId, book.catalogBookId),
         ),
       );
   }
@@ -338,10 +278,7 @@ router.put("/books/:id/star", requireAuth, async (req, res): Promise<void> => {
 
 router.get("/dashboard/summary", requireAuth, async (_req, res): Promise<void> => {
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const rows = await db
-    .select()
-    .from(booksTable)
-    .where(eq(booksTable.userId, userId));
+  const rows = await listLibraryBooks(userId);
   const readBooks = rows.filter((book) => book.status === "read");
   const rated = readBooks.filter((book) => book.rating !== null);
   const totalPagesRead = readBooks.reduce((sum, book) => sum + (book.pages ?? 0), 0);
@@ -371,7 +308,7 @@ router.get("/dashboard/summary", requireAuth, async (_req, res): Promise<void> =
   const summary = {
     totalBooks: rows.length,
     readCount: readBooks.length,
-    ownedCount: rows.filter((book) => book.status === "owned").length,
+    ownedCount: rows.filter((book) => book.isOwned).length,
     wantToReadCount: rows.filter((book) => book.status === "want_to_read").length,
     totalPagesRead,
     averageRating:

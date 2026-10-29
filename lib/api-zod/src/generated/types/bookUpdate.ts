@@ -15,9 +15,16 @@ export interface BookUpdate {
   title?: string;
   /**
      * @minLength 1
-     * @maxLength 240
+     * @maxLength 2000
      */
   author?: string;
+  /**
+     * @minItems 1
+     * @maxItems 20
+     * @items.minLength 1
+     * @items.maxLength 240
+     */
+  authors?: string[];
   /**
      * @maxLength 120
      * @nullable
@@ -35,6 +42,17 @@ export interface BookUpdate {
      */
   rating?: number | null;
   status?: BookStatus;
+  isOwned?: boolean;
+  /**
+     * @maxLength 32
+     * @nullable
+     */
+  isbn?: string | null;
+  /**
+     * @maxLength 10000
+     * @nullable
+     */
+  description?: string | null;
   /** @items.maxLength 50 */
   moodTags?: string[];
   /** @nullable */
