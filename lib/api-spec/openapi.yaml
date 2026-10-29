@@ -1,0 +1,365 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Book Tracker API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: books
+    description: Personal book library
+  - name: auth
+    description: Signed-in account setup
+  - name: dashboard
+    description: Reading statistics
+  - name: catalog
+    description: Open Library search
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /users/me:
+    put:
+      operationId: ensureCurrentUser
+      tags: [auth]
+      summary: Ensure the signed-in user has a local account row
+      description: Creates the current Clerk user's row if needed; never accepts another user's identity.
+      responses:
+        "200":
+          description: The current account is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserResponse"
+  /books:
+    get:
+      operationId: listBooks
+      tags: [books]
+      summary: List the signed-in user's books
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { $ref: "#/components/schemas/BookStatus" }
+        - in: query
+          name: genre
+          schema: { type: string }
+        - in: query
+          name: starredOnly
+          schema: { type: boolean }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [newest, title, rating, pages]
+      responses:
+        "200":
+          description: Books
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Book" }
+    post:
+      operationId: createBook
+      tags: [books]
+      summary: Add a book to the signed-in user's library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookInput" }
+      responses:
+        "201":
+          description: Created book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+  /books/export:
+    get:
+      operationId: exportBooks
+      tags: [books]
+      summary: Export the signed-in user's books
+      responses:
+        "200":
+          description: Books ready for spreadsheet export
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BookExport" }
+  /books/next:
+    get:
+      operationId: pickNextBook
+      tags: [books]
+      summary: Pick a random book from the want-to-read shelf
+      parameters:
+        - in: query
+          name: genre
+          schema: { type: string }
+        - in: query
+          name: maxPages
+          schema: { type: integer, minimum: 1 }
+        - in: query
+          name: moodTag
+          schema: { type: string }
+      responses:
+        "200":
+          description: Random matching book, or null when no books match
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PickResponse" }
+  /books/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, minimum: 1 }
+    get:
+      operationId: getBook
+      tags: [books]
+      summary: Get one book from the signed-in user's library
+      responses:
+        "200":
+          description: Book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+        "404": { description: Book not found }
+    patch:
+      operationId: updateBook
+      tags: [books]
+      summary: Update one book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookUpdate" }
+      responses:
+        "200":
+          description: Updated book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+        "404": { description: Book not found }
+    delete:
+      operationId: deleteBook
+      tags: [books]
+      summary: Delete one book
+      responses:
+        "204": { description: Deleted }
+        "404": { description: Book not found }
+  /books/{id}/star:
+    put:
+      operationId: setBookStar
+      tags: [books]
+      summary: Star or unstar a book
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StarInput" }
+      responses:
+        "200":
+          description: Updated book
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Book" }
+        "404": { description: Book not found }
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get reading totals and genre statistics
+      responses:
+        "200":
+          description: Reading summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+  /catalog/search:
+    get:
+      operationId: searchCatalog
+      tags: [catalog]
+      summary: Search Open Library for book details
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 2 }
+      responses:
+        "200":
+          description: Matching catalog records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CatalogBook" }
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    BookStatus:
+      type: string
+      enum: [want_to_read, owned, read]
+    Book:
+      type: object
+      required: [id, title, author, status, moodTags, starred, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        author: { type: string }
+        genre: { type: ["string", "null"] }
+        pages: { type: ["integer", "null"] }
+        rating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
+        status: { $ref: "#/components/schemas/BookStatus" }
+        moodTags:
+          type: array
+          items: { type: string }
+        coverUrl: { type: ["string", "null"] }
+        openLibraryId: { type: ["string", "null"] }
+        publishedYear: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        startedOn: { type: ["string", "null"] }
+        finishedOn: { type: ["string", "null"] }
+        starred: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    BookInput:
+      type: object
+      required: [title, author, status]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        author: { type: string, minLength: 1, maxLength: 240 }
+        genre: { type: ["string", "null"], maxLength: 120 }
+        pages: { type: ["integer", "null"], minimum: 1 }
+        rating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
+        status: { $ref: "#/components/schemas/BookStatus" }
+        moodTags:
+          type: array
+          items: { type: string, maxLength: 50 }
+        coverUrl: { type: ["string", "null"], format: uri }
+        openLibraryId: { type: ["string", "null"], maxLength: 120 }
+        publishedYear: { type: ["integer", "null"], minimum: 0, maximum: 3000 }
+        notes: { type: ["string", "null"], maxLength: 10000 }
+        startedOn: { type: ["string", "null"] }
+        finishedOn: { type: ["string", "null"] }
+    BookUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        author: { type: string, minLength: 1, maxLength: 240 }
+        genre: { type: ["string", "null"], maxLength: 120 }
+        pages: { type: ["integer", "null"], minimum: 1 }
+        rating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
+        status: { $ref: "#/components/schemas/BookStatus" }
+        moodTags:
+          type: array
+          items: { type: string, maxLength: 50 }
+        coverUrl: { type: ["string", "null"], format: uri }
+        openLibraryId: { type: ["string", "null"], maxLength: 120 }
+        publishedYear: { type: ["integer", "null"], minimum: 0, maximum: 3000 }
+        notes: { type: ["string", "null"], maxLength: 10000 }
+        startedOn: { type: ["string", "null"] }
+        finishedOn: { type: ["string", "null"] }
+    BookExport:
+      type: object
+      required: [title, author, status]
+      properties:
+        title: { type: string }
+        author: { type: string }
+        genre: { type: ["string", "null"] }
+        pages: { type: ["integer", "null"] }
+        rating: { type: ["integer", "null"] }
+        status: { $ref: "#/components/schemas/BookStatus" }
+        moodTags:
+          type: array
+          items: { type: string }
+        notes: { type: ["string", "null"] }
+        startedOn: { type: ["string", "null"] }
+        finishedOn: { type: ["string", "null"] }
+    StarInput:
+      type: object
+      required: [starred]
+      properties:
+        starred: { type: boolean }
+    GenreCount:
+      type: object
+      required: [genre, count]
+      properties:
+        genre: { type: string }
+        count: { type: integer }
+    DashboardSummary:
+      type: object
+      required: [totalBooks, readCount, ownedCount, wantToReadCount, totalPagesRead, genreBreakdown, monthlyReadCount, fastestReadingDays]
+      properties:
+        totalBooks: { type: integer }
+        readCount: { type: integer }
+        ownedCount: { type: integer }
+        wantToReadCount: { type: integer }
+        totalPagesRead: { type: integer }
+        averageRating: { type: ["number", "null"] }
+        genreBreakdown:
+          type: array
+          items: { $ref: "#/components/schemas/GenreCount" }
+        longestReadBook:
+          anyOf:
+            - { $ref: "#/components/schemas/Book" }
+            - { type: "null" }
+        fastestReadBook:
+          anyOf:
+            - { $ref: "#/components/schemas/Book" }
+            - { type: "null" }
+        fastestReadingDays: { type: ["integer", "null"] }
+        monthlyReadCount: { type: integer }
+    PickResponse:
+      type: object
+      required: [book]
+      properties:
+        book:
+          anyOf:
+            - { $ref: "#/components/schemas/Book" }
+            - { type: "null" }
+    CatalogBook:
+      type: object
+      required: [key, title, author]
+      properties:
+        key: { type: string }
+        title: { type: string }
+        author: { type: string }
+        genre: { type: ["string", "null"] }
+        pages: { type: ["integer", "null"] }
+        coverUrl: { type: ["string", "null"] }
+        publishedYear: { type: ["integer", "null"] }
+    CurrentUserResponse:
+      type: object
+      required: [ready]
+      properties:
+        ready: { type: boolean }
+
