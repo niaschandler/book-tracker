@@ -11,6 +11,7 @@ export interface Book {
   id: number;
   title: string;
   author: string;
+  authors: string[];
   /** @nullable */
   genre?: string | null;
   /** @nullable */
@@ -22,6 +23,11 @@ export interface Book {
      */
   rating?: number | null;
   status: BookStatus;
+  isOwned: boolean;
+  /** @nullable */
+  isbn?: string | null;
+  /** @nullable */
+  description?: string | null;
   moodTags: string[];
   /** @nullable */
   coverUrl?: string | null;

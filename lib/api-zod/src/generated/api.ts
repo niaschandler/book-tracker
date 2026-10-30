@@ -31,9 +31,10 @@ export const EnsureCurrentUserResponse = zod.object({
  */
 export const ListBooksQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']).optional(),
+  "status": zod.enum(['want_to_read', 'reading', 'read']).optional(),
   "genre": zod.coerce.string().optional(),
   "starredOnly": zod.coerce.boolean().optional(),
+  "isOwned": zod.coerce.boolean().optional(),
   "sort": zod.enum(['newest', 'title', 'rating', 'pages']).optional()
 })
 
@@ -45,10 +46,14 @@ export const ListBooksResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(listBooksResponseRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -68,12 +73,20 @@ export const ListBooksResponse = zod.array(ListBooksResponseItem)
  */
 export const createBookBodyTitleMax = 300;
 
-export const createBookBodyAuthorMax = 240;
+export const createBookBodyAuthorMax = 2000;
+
+export const createBookBodyAuthorsItemMax = 240;
+
+export const createBookBodyAuthorsMax = 20;
 
 export const createBookBodyGenreMax = 120;
 
 
 export const createBookBodyRatingMax = 5;
+
+export const createBookBodyIsbnMax = 32;
+
+export const createBookBodyDescriptionMax = 10000;
 
 export const createBookBodyMoodTagsItemMax = 50;
 
@@ -89,10 +102,14 @@ export const createBookBodyNotesMax = 10000;
 export const CreateBookBody = zod.object({
   "title": zod.string().min(1).max(createBookBodyTitleMax),
   "author": zod.string().min(1).max(createBookBodyAuthorMax),
+  "authors": zod.array(zod.string().min(1).max(createBookBodyAuthorsItemMax)).min(1).max(createBookBodyAuthorsMax).optional(),
   "genre": zod.string().max(createBookBodyGenreMax).nullish(),
   "pages": zod.number().int().min(1).nullish(),
   "rating": zod.number().int().min(1).max(createBookBodyRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean().optional(),
+  "isbn": zod.string().max(createBookBodyIsbnMax).nullish(),
+  "description": zod.string().max(createBookBodyDescriptionMax).nullish(),
   "moodTags": zod.array(zod.string().max(createBookBodyMoodTagsItemMax)).optional(),
   "coverUrl": zod.string().url().nullish(),
   "openLibraryId": zod.string().max(createBookBodyOpenLibraryIdMax).nullish(),
@@ -110,10 +127,14 @@ export const CreateBookResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(createBookResponseRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -136,7 +157,10 @@ export const ExportBooksResponseItem = zod.object({
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()).optional(),
   "notes": zod.string().nullish(),
   "startedOn": zod.string().nullish(),
@@ -166,10 +190,14 @@ export const PickNextBookResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(pickNextBookResponseBookOneRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -202,10 +230,14 @@ export const GetBookResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(getBookResponseRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -231,12 +263,20 @@ export const UpdateBookParams = zod.object({
 
 export const updateBookBodyTitleMax = 300;
 
-export const updateBookBodyAuthorMax = 240;
+export const updateBookBodyAuthorMax = 2000;
+
+export const updateBookBodyAuthorsItemMax = 240;
+
+export const updateBookBodyAuthorsMax = 20;
 
 export const updateBookBodyGenreMax = 120;
 
 
 export const updateBookBodyRatingMax = 5;
+
+export const updateBookBodyIsbnMax = 32;
+
+export const updateBookBodyDescriptionMax = 10000;
 
 export const updateBookBodyMoodTagsItemMax = 50;
 
@@ -252,10 +292,14 @@ export const updateBookBodyNotesMax = 10000;
 export const UpdateBookBody = zod.object({
   "title": zod.string().min(1).max(updateBookBodyTitleMax).optional(),
   "author": zod.string().min(1).max(updateBookBodyAuthorMax).optional(),
+  "authors": zod.array(zod.string().min(1).max(updateBookBodyAuthorsItemMax)).min(1).max(updateBookBodyAuthorsMax).optional(),
   "genre": zod.string().max(updateBookBodyGenreMax).nullish(),
   "pages": zod.number().int().min(1).nullish(),
   "rating": zod.number().int().min(1).max(updateBookBodyRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']).optional(),
+  "status": zod.enum(['want_to_read', 'reading', 'read']).optional(),
+  "isOwned": zod.boolean().optional(),
+  "isbn": zod.string().max(updateBookBodyIsbnMax).nullish(),
+  "description": zod.string().max(updateBookBodyDescriptionMax).nullish(),
   "moodTags": zod.array(zod.string().max(updateBookBodyMoodTagsItemMax)).optional(),
   "coverUrl": zod.string().url().nullish(),
   "openLibraryId": zod.string().max(updateBookBodyOpenLibraryIdMax).nullish(),
@@ -273,10 +317,14 @@ export const UpdateBookResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(updateBookResponseRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -325,10 +373,14 @@ export const SetBookStarResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(setBookStarResponseRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -366,10 +418,14 @@ export const GetDashboardSummaryResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(getDashboardSummaryResponseLongestReadBookOneRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),
@@ -385,10 +441,14 @@ export const GetDashboardSummaryResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
   "rating": zod.number().int().min(1).max(getDashboardSummaryResponseFastestReadBookOneRatingMax).nullish(),
-  "status": zod.enum(['want_to_read', 'owned', 'read']),
+  "status": zod.enum(['want_to_read', 'reading', 'read']),
+  "isOwned": zod.boolean(),
+  "isbn": zod.string().nullish(),
+  "description": zod.string().nullish(),
   "moodTags": zod.array(zod.string()),
   "coverUrl": zod.string().nullish(),
   "openLibraryId": zod.string().nullish(),

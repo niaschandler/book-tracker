@@ -11,6 +11,6 @@ export type BookStatus = typeof BookStatus[keyof typeof BookStatus];
 
 export const BookStatus = {
   want_to_read: 'want_to_read',
-  owned: 'owned',
+  reading: 'reading',
   read: 'read',
 } as const;

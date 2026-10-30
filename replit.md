@@ -26,13 +26,16 @@ A personal reading library for tracking books read, owned, and wanted, with priv
 - `artifacts/book-tracker` — React/Vite reading library UI
 - `artifacts/api-server/src/routes/books.ts` — authenticated book, dashboard, catalog, and export endpoints
 - `lib/api-spec/openapi.yaml` — API contract source of truth
-- `lib/db/src/schema/books.ts` — users, books, and stars database schema
+- `lib/db/src/schema/` — normalized users, books, authors, genres, reading log, and stars
+- `docs/database.md` — relationships, constraints, and development migration notes
 - `artifacts/book-tracker/src/index.css` — app theme and typography
 
 ## Architecture decisions
 
 - Clerk manages credentials and sessions; the local `users` row maps a Clerk account ID to app-owned records.
-- Book rows and stars are always scoped to the current user; stars use one composite-key junction table.
+- Library access starts from the current user's reading log, with one record per user/book. Reading status and ownership are independent.
+- Book metadata is separate from private reading data; shared metadata uses copy-on-write so one reader's edits cannot change another reader's library.
+- Stars reference the user's reading-log pair and cascade when that private record is removed.
 - Reading dates are calendar dates, so the API keeps them as `YYYY-MM-DD` strings.
 - Open Library is searched server-side; choosing a result fills a book form but does not save it until the user submits.
 

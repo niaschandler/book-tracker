@@ -64,6 +64,9 @@ paths:
           name: starredOnly
           schema: { type: boolean }
         - in: query
+          name: isOwned
+          schema: { type: boolean }
+        - in: query
           name: sort
           schema:
             type: string
@@ -227,18 +230,24 @@ components:
         - status
     BookStatus:
       type: string
-      enum: [want_to_read, owned, read]
+      enum: [want_to_read, reading, read]
     Book:
       type: object
-      required: [id, title, author, status, moodTags, starred, createdAt, updatedAt]
+      required: [id, title, author, authors, status, isOwned, moodTags, starred, createdAt, updatedAt]
       properties:
         id: { type: integer }
         title: { type: string }
         author: { type: string }
+        authors:
+          type: array
+          items: { type: string }
         genre: { type: ["string", "null"] }
         pages: { type: ["integer", "null"] }
         rating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
         status: { $ref: "#/components/schemas/BookStatus" }
+        isOwned: { type: boolean }
+        isbn: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
         moodTags:
           type: array
           items: { type: string }
@@ -256,11 +265,19 @@ components:
       required: [title, author, status]
       properties:
         title: { type: string, minLength: 1, maxLength: 300 }
-        author: { type: string, minLength: 1, maxLength: 240 }
+        author: { type: string, minLength: 1, maxLength: 2000 }
+        authors:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 240 }
         genre: { type: ["string", "null"], maxLength: 120 }
         pages: { type: ["integer", "null"], minimum: 1 }
         rating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
         status: { $ref: "#/components/schemas/BookStatus" }
+        isOwned: { type: boolean }
+        isbn: { type: ["string", "null"], maxLength: 32 }
+        description: { type: ["string", "null"], maxLength: 10000 }
         moodTags:
           type: array
           items: { type: string, maxLength: 50 }
@@ -274,11 +291,19 @@ components:
       type: object
       properties:
         title: { type: string, minLength: 1, maxLength: 300 }
-        author: { type: string, minLength: 1, maxLength: 240 }
+        author: { type: string, minLength: 1, maxLength: 2000 }
+        authors:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 240 }
         genre: { type: ["string", "null"], maxLength: 120 }
         pages: { type: ["integer", "null"], minimum: 1 }
         rating: { type: ["integer", "null"], minimum: 1, maximum: 5 }
         status: { $ref: "#/components/schemas/BookStatus" }
+        isOwned: { type: boolean }
+        isbn: { type: ["string", "null"], maxLength: 32 }
+        description: { type: ["string", "null"], maxLength: 10000 }
         moodTags:
           type: array
           items: { type: string, maxLength: 50 }
@@ -290,7 +315,7 @@ components:
         finishedOn: { type: ["string", "null"] }
     BookExport:
       type: object
-      required: [title, author, status]
+      required: [title, author, status, isOwned]
       properties:
         title: { type: string }
         author: { type: string }
@@ -298,6 +323,9 @@ components:
         pages: { type: ["integer", "null"] }
         rating: { type: ["integer", "null"] }
         status: { $ref: "#/components/schemas/BookStatus" }
+        isOwned: { type: boolean }
+        isbn: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
         moodTags:
           type: array
           items: { type: string }

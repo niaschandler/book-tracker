@@ -17,6 +17,11 @@ export interface BookExport {
   /** @nullable */
   rating?: number | null;
   status: BookStatus;
+  isOwned: boolean;
+  /** @nullable */
+  isbn?: string | null;
+  /** @nullable */
+  description?: string | null;
   moodTags?: string[];
   /** @nullable */
   notes?: string | null;
