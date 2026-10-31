@@ -10,7 +10,7 @@ The experience should feel like walking into a grand library at a prestigious un
 
 ## Features
 
-- Sign in and sign out with Replit. Visitors use or create a Replit account; each signed-in reader sees only their own books and stars.
+- Sign in and sign out with GitHub OAuth. Visitors use or create a GitHub account; each signed-in reader sees only their own books and stars.
 - Add, view, edit, and delete books, with confirmation before deletion.
 - Track author, genre, page count, rating, shelf status, reading dates, mood tags, cover, and notes.
 - Star books and view only starred items.
@@ -23,7 +23,7 @@ The experience should feel like walking into a grand library at a prestigious un
 
 ## Data and privacy
 
-Replit identities link to the existing `users` table. Shared catalog books have private per-reader reading records, and one shared `stars` junction table represents reader/book stars. Every private query is scoped to the authenticated reader. Sessions are opaque, stored hashed in PostgreSQL, and sent as Bearer headers so the GitHub Pages frontend does not depend on third-party cookies.
+GitHub identities link to the existing `users` table using GitHub's stable numeric user ID, not an email address or changeable username. Shared catalog books have private per-reader reading records, and one shared `stars` junction table represents reader/book stars. Every private query is scoped to the authenticated reader. Sessions are opaque, stored hashed in PostgreSQL, and sent as Bearer headers so the GitHub Pages frontend does not depend on third-party cookies.
 
 Existing libraries from the previous login remain intact. Account linking requires independent owner verification; accounts are never automatically matched by email.
 
@@ -32,7 +32,7 @@ Existing libraries from the previous login remain intact. Account linking requir
 - React, Vite, TypeScript, and pnpm workspaces
 - Express API with an OpenAPI contract and generated React Query / Zod clients
 - PostgreSQL with Drizzle ORM
-- Replit OpenID Connect authentication with PKCE
+- GitHub OAuth authentication with state and PKCE
 - Open Library Search API and Covers API
 
 ## Running in Replit
@@ -49,7 +49,7 @@ After changing `lib/api-spec/openapi.yaml`, regenerate API clients:
 pnpm --filter @workspace/api-spec run codegen
 ```
 
-Development uses the workspace PostgreSQL database and Replit authentication. Do not commit environment secrets.
+Development uses the workspace PostgreSQL database and GitHub OAuth. See [GitHub OAuth setup](docs/github-oauth.md) to register the application and configure server-only credentials. Do not commit environment secrets.
 
 ## GitHub Pages + Replit hosting
 

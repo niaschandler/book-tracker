@@ -379,23 +379,30 @@ function AuthPanel({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     <section aria-labelledby="auth-title" className="fade-up w-[460px] max-w-full rounded-[22px] border border-[#e1d9c8] bg-[#fbf8f1] p-7 shadow-[0_24px_70px_rgba(26,54,40,.16)] md:p-9">
       <p className="font-mono text-[9px] uppercase tracking-[.22em] text-[#a17d50]">{newcomer ? 'A new reading room' : 'Return to your shelves'}</p>
       <h1 id="auth-title" className="mt-2 font-serif text-4xl leading-[1.02] text-[#263e34]">{newcomer ? 'Make room for stories.' : 'Welcome back, reader.'}</h1>
-      <p className="mt-3 text-sm leading-6 text-[#718276]">Reading Room uses your Replit account to sign you in. {newcomer ? 'If you do not have one yet, Replit will let you create it in the next step, then send you straight back here.' : 'You will confirm on Replit, then return to your library.'} No separate password to remember.</p>
+      <p className="mt-3 text-sm leading-6 text-[#718276]">Reading Room uses your GitHub account to sign you in. {newcomer ? 'If you do not have one yet, GitHub will let you create it in the next step, then send you straight back here.' : 'You will confirm on GitHub, then return to your library.'} No separate password to remember.</p>
       {(loginError || restoreError) && <div role="alert" data-testid="error-auth" className="mt-5 rounded-xl border border-[#ead0c9] bg-[#fbefeb] p-3.5 text-sm leading-6 text-[#8b332c]">{loginError || restoreError}{restoreError && !loginError && <button type="button" data-testid="button-retry-session" onClick={retryRestore} className="ml-2 font-semibold underline">Try again</button>}</div>}
-      <button type="button" data-testid="button-continue-replit" onClick={() => void signIn()} disabled={signingIn || !isLoaded} aria-busy={signingIn}
+      <button type="button" data-testid="button-continue-github" onClick={() => void signIn()} disabled={signingIn || !isLoaded} aria-busy={signingIn}
         className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full bg-[#285342] px-6 py-3.5 text-sm font-semibold text-[#fbf8f1] transition hover:-translate-y-0.5 hover:bg-[#1f4536] disabled:translate-y-0 disabled:opacity-60">
-        {signingIn ? 'Opening Replit…' : !isLoaded ? 'Checking your session…' : <>Continue with Replit <ArrowRight size={16}/></>}
+        {signingIn ? 'Opening GitHub…' : !isLoaded ? 'Checking your session…' : <>Continue with GitHub <ArrowRight size={16}/></>}
       </button>
       <p className="mt-3 text-center text-[11px] text-[#8b9588]">{newcomer ? <>Already reading here? <Link href="/sign-in" className="font-semibold text-[#285342]">Sign in</Link></> : <>New to Reading Room? <Link href="/sign-up" className="font-semibold text-[#285342]">Start a library</Link></>}</p>
       <div className="mt-7 border-t border-[#e7e1d5] pt-5">
         <p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a7950]">Signed in another way before?</p>
-        <p className="mt-2 text-xs leading-5 text-[#718075]">Libraries from the previous sign-in system are kept safely, but they are not linked automatically, even when the email address matches. Ask the site owner to link your earlier library to your Replit account.</p>
+        <p className="mt-2 text-xs leading-5 text-[#718075]">Libraries from the previous sign-in system are kept safely, but they are not linked automatically, even when the email address matches. Ask the site owner to link your earlier library to your GitHub account.</p>
       </div>
     </section>
   </div>;
 }
 function SignInPage() { return <AuthPanel mode="sign-in"/>; }
 function SignUpPage() { return <AuthPanel mode="sign-up"/>; }
-function HomeRedirect(){const {isLoaded,isSignedIn}=useAuth();if(!isLoaded)return <div className="min-h-[100dvh] bg-[#f1eddf]" aria-busy="true"/>;return isSignedIn?<Redirect to="/dashboard"/>:<HomePage/>;}
+function HomeRedirect() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { loginError, restoreError } = useSession();
+  if (!isLoaded) return <div className="min-h-[100dvh] bg-[#f1eddf]" aria-busy="true"/>;
+  if (isSignedIn) return <Redirect to="/dashboard"/>;
+  if (loginError || restoreError) return <Redirect to="/sign-in"/>;
+  return <HomePage/>;
+}
 function ProtectedDashboard(){return <RouteGate><Dashboard/></RouteGate>;}
 function ProtectedBooks(){return <RouteGate><BooksPage/></RouteGate>;}
 function ProtectedStarred(){return <RouteGate><BooksPage starredView/></RouteGate>;}

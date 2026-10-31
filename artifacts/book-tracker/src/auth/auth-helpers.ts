@@ -54,10 +54,12 @@ export function readCallback(href: string): CallbackParams {
 }
 
 const errorCopy: Record<string, string> = {
-  access_denied: 'Replit sign-in was cancelled. You can try again whenever you are ready.',
+  access_denied: 'GitHub sign-in was cancelled. You can try again whenever you are ready.',
+  configuration: 'GitHub sign-in is not configured yet. The site owner needs to finish the GitHub OAuth setup.',
+  provider_failed: 'We could not finish signing you in with GitHub. Please try again.',
   expired: 'That sign-in link expired. Please start again.',
 };
 export function friendlyLoginError(code: string | null): string {
   if (!code) return '';
-  return errorCopy[code] ?? 'We could not finish signing you in with Replit. Please try again.';
+  return errorCopy[code] ?? 'We could not finish signing you in with GitHub. Please try again.';
 }

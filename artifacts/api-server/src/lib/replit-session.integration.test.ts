@@ -8,7 +8,7 @@ import { createHandoff, exchangeHandoff, findReader, revokeSession } from "./rep
 import { loginChallenge, opaqueCode, sessionHash, frontendUrls } from "./auth-policy";
 import { listLibraryBooks } from "./library";
 
-test("Replit session handoff, privacy, expiry, origin restrictions and logout", async t => {
+test("Reader session handoff, privacy, expiry, origin restrictions and logout", async t => {
   const suffix = opaqueCode();
   const users = await db.insert(usersTable).values([
     { clerkUserId: `auth-test-a:${suffix}`, username: "Test reader A" },

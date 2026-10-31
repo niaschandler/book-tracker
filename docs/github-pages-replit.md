@@ -1,10 +1,11 @@
 # Publish using only GitHub and Replit
 
 The website runs on **GitHub Pages**. The API, PostgreSQL database, sessions,
-and **Sign in with Replit** run on Replit. No Auth0, external Clerk tenant,
+and the **GitHub OAuth callback and app sessions** run on Replit. No Auth0, external Clerk tenant,
 email/password service, or additional database provider is required.
 
-Visitors use or create a Replit account. Reading Room does not store passwords.
+Visitors use or create a GitHub account. Reading Room does not store passwords.
+Complete [GitHub OAuth setup](github-oauth.md) before publishing the login change.
 
 ## 1. Prepare the Replit backend
 
@@ -31,8 +32,9 @@ To allow the Replit preview too, append its complete frontend base URL,
 separated by a comma. Origins are validated: arbitrary external sites cannot
 call the API or receive login handoffs.
 
-`REPL_ID` and `DATABASE_URL` are supplied in the Replit environment. The API
-does not need Clerk keys, Auth0 credentials, or a third-party login client ID.
+`DATABASE_URL` is supplied in the Replit environment. Set the server-only
+`GITHUB_OAUTH_CLIENT_ID` and `GITHUB_OAUTH_CLIENT_SECRET` through Replit's secure
+configuration flow. The API does not need Clerk keys or Auth0 credentials.
 Never add database URLs, session tokens, or secret keys to GitHub variables,
 repository files, or browser builds.
 
@@ -69,8 +71,8 @@ sharing a deep link does not require a server-side Pages rewrite.
 
 ## 3. Existing account migration
 
-Old login accounts cannot automatically become Replit accounts. All old user
-rows and books remain in the database, but a new Replit sign-in initially has
+Old login accounts cannot automatically become GitHub accounts. All old user
+rows and books remain in the database, but a new GitHub sign-in initially has
 its own empty library. **Do not recreate or delete the old books.**
 
 The owner must independently verify the reader's old and new account
@@ -78,14 +80,15 @@ ownership, identify the two internal `users.id` values, and use:
 
 ```sh
 pnpm --filter @workspace/scripts exec tsx \
-  ../artifacts/api-server/scripts/link-replit-account.ts \
-  --from-user-id NEW_REPLIT_READER_ID --to-user-id OLD_LIBRARY_OWNER_ID
+  ../artifacts/api-server/scripts/link-github-account.ts \
+  --from-user-id NEW_GITHUB_READER_ID --to-user-id OLD_LIBRARY_OWNER_ID
 ```
 
 This is a dry run. After checking ownership and both IDs, repeat with `--apply`.
-The command refuses to merge nonempty libraries or overwrite an existing
-Replit identity. It preserves both user rows and all book foreign keys, moves
-only the verified Replit identity, and revokes old sessions. Sign in again
+The command refuses to merge nonempty source libraries or overwrite an existing
+GitHub identity. It can replace the old Replit identity after ownership
+verification. It preserves both user rows and all book foreign keys, moves
+only the verified GitHub identity, and revokes old sessions. Sign in again
 after linking. Use only a database administration environment explicitly
 authorized for the target database; do not copy secrets into shell history.
 
@@ -93,8 +96,8 @@ Do not link accounts merely because email addresses match.
 
 ## How login works
 
-The browser goes to Replit through the backend. The backend verifies the
-OIDC signature, state, nonce, and PKCE proof. It returns a **single-use,
+The browser goes to GitHub through the Replit backend. The backend verifies
+OAuth state, PKCE, and the GitHub identity via the GitHub API. It returns a **single-use,
 two-minute code**, not a session token, to the allowed frontend. The browser
 must exchange that code with a separate proof saved before login. Session
 tokens are opaque, stored in the current tab's session storage, sent only as
@@ -103,5 +106,5 @@ days and logout revokes the current token.
 
 API calls do not depend on third-party cookies. The login redirect uses
 HttpOnly, Secure, SameSite=Lax cookies only while the API is the top-level
-site. Closing the tab clears its browser-stored session. Replit-wide logout
+site. Closing the tab clears its browser-stored session. GitHub-wide logout
 and signing out of this app are separate actions.

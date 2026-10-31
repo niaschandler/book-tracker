@@ -34,5 +34,8 @@ test("callback parsing strips params and keeps hash", () => {
   assert.equal(r.error, null);
   assert.equal(r.cleaned, "/app/?keep=1#/books");
   assert.equal(readCallback("https://x.dev/?login_error=access_denied").cleaned, "/");
-  assert.ok(friendlyLoginError("<script>").includes("Replit"));
+  assert.ok(friendlyLoginError("<script>").includes("GitHub"));
+  assert.ok(friendlyLoginError("configuration").includes("not configured"));
+  assert.ok(friendlyLoginError("access_denied").includes("cancelled"));
+  assert.ok(!friendlyLoginError("<script>").includes("<script>"));
 });
