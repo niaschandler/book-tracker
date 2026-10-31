@@ -24,6 +24,8 @@ import { StarBookButton } from '@/components/StarBookButton';
 import { refreshLibrary } from '@/lib/library-cache';
 import { requiredBookErrors } from '@/lib/book-form-validation';
 import { namedGenreCount } from '@/lib/dashboard-chart';
+import { bookshelfGroups, shelfStats } from '@/lib/bookshelf';
+import { BookshelfWall } from '@/components/shelf/Bookshelf';
 import { ReadingRhythmChart } from '@/components/dashboard/ReadingRhythmChart';
 import { RecordBook, longestDetail, fastestDetail } from '@/components/dashboard/RecordBooks';
 import './index.css';
@@ -97,7 +99,7 @@ function AppShell({ children, section }: { children: ReactNode; section: string 
     { href: '/dashboard', label: 'Reading room', icon: Library },
     { href: '/books', label: 'My library', icon: BookOpen },
     { href: '/starred', label: 'Starred', icon: Star },
-    { href: '/shelf', label: 'Finished books', icon: Bookmark },
+    { href: '/shelf', label: 'Bookshelf', icon: Bookmark },
     { href: '/next', label: 'Choose a book', icon: Compass },
   ];
   return <div className="min-h-[100dvh] bg-[#f2efe5] text-[#263e34]">
@@ -385,12 +387,25 @@ function BookDetail({id}:{id:number}) {
 }
 
 function Shelf() {
-  const books=useListBooks({status:'read',sort:'newest'},{query:{queryKey:getListBooksQueryKey({status:'read',sort:'newest'})}});
-  const [active,setActive]=useState<Book|null>(null);
-  const read=books.data||[];
-  return <AppShell section="/shelf"><PageTitle eyebrow="The finished shelf" title="Read & kept." sub="The books that made it all the way through — and stayed with you."/>
-    {books.isLoading?<SkeletonGrid/>:books.isError?<ErrorMessage retry={()=>books.refetch()}/>:read.length?<><div className="mb-7 flex items-center gap-3 border-b border-[#d7d0c1] pb-4"><span className="font-serif text-3xl text-[#315744]">{read.length}</span><span className="font-mono text-[9px] uppercase tracking-[.18em] text-[#859084]">finished volumes</span><span className="ml-auto font-mono text-[10px] text-[#8b9588]">{read.reduce((n,b)=>n+(b.pages||0),0).toLocaleString()} pages in all</span></div><div className="relative grid grid-cols-2 gap-x-5 gap-y-10 rounded-[22px] border border-[#d6c7ac] bg-[#e7dcc7] p-5 sm:grid-cols-3 md:p-8 lg:grid-cols-5">{read.map((book,i)=><button key={book.id} onClick={()=>setActive(book)} className={`group text-left ${i%4===1?'mt-3':''}`}><Cover book={book} className="aspect-[.68] w-full rounded-md shadow-[3px_6px_10px_rgba(55,44,28,.2)] transition group-hover:-translate-y-1"/><p className="mt-3 line-clamp-1 font-serif text-lg text-[#344e3e]">{book.title}</p><p className="mt-1 text-[11px] text-[#7d8376]">{book.author}</p>{book.rating&&<span className="mt-1 block text-[10px] tracking-widest text-[#ad8549]">{'★'.repeat(book.rating)}</span>}</button>)}</div><p className="mt-5 text-center font-serif italic text-sm text-[#899080]">A record of where your mind has been.</p></>:<div className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-16 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e2d3] text-[#62806d]"><Bookmark size={24}/></div><h2 className="mt-5 font-serif text-3xl">The finished shelf is still open.</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#778477]">When you mark a book as read, it finds its way here. Your reading history deserves a shelf of its own.</p><Link href="/books" className="mt-6 inline-block rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] no-underline">Visit your library</Link></div>}
-    {active&&<div className="fixed inset-0 z-50 grid place-items-center bg-[#1b3128]/55 p-4" onClick={()=>setActive(null)}><div onClick={e=>e.stopPropagation()} className="relative flex w-full max-w-xl gap-5 rounded-2xl bg-[#faf8f1] p-6"><button onClick={()=>setActive(null)} className="absolute right-3 top-3 text-[#788477]"><X size={18}/></button><Cover book={active} className="h-[180px] w-[122px] shrink-0 rounded shadow-md"/><div><p className="font-mono text-[9px] uppercase tracking-[.15em] text-[#a17d50]">A book you finished</p><h2 className="mt-2 font-serif text-3xl">{active.title}</h2><p className="mt-1 text-sm text-[#788477]">{active.author}</p><p className="mt-4 line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-[#526a59]">{active.notes||'No notes saved for this book.'}</p><Link href={`/books/${active.id}`} onClick={()=>setActive(null)} className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-[#315744] no-underline">Open book record <ArrowRight size={14}/></Link></div></div></div>}
+  const books=useListBooks(undefined,{query:{queryKey:getListBooksQueryKey()}});
+  useEffect(()=>{document.title='Bookshelf | Marginalia';},[]);
+  const groups=useMemo(()=>bookshelfGroups(books.data),[books.data]);
+  const stats=useMemo(()=>shelfStats(books.data),[books.data]);
+  const boughtCount=groups.find(group=>group.key==='bought-unread')?.books.length??0;
+  return <AppShell section="/shelf"><PageTitle eyebrow="Your bookshelf" title="Read & waiting." sub="Books you have finished, plus a separate shelf for books you own and have yet to finish. Choose a spine to open its details."/>
+    {books.isLoading?<div aria-busy="true" aria-label="Loading your bookshelf" className="space-y-10">{[0,1].map(r=><div key={r} className="animate-pulse motion-reduce:animate-none"><div className="mb-3 h-6 w-48 rounded bg-[#e2ddcf]"/><div className="flex items-end gap-1 rounded-t-lg bg-[#d9cdb7] px-5 pt-6">{Array.from({length:12},(_,i)=><div key={i} style={{height:150+(i*37)%50}} className="w-9 rounded-t bg-[#c9bba0]"/>)}</div><div className="h-3 bg-[#cbb898]"/></div>)}</div>
+    :books.isError?<ErrorMessage retry={()=>books.refetch()}/>
+    :<><div className="mb-8 flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-[#d7d0c1] pb-4">
+      <span data-testid="text-shelf-count"><span className="font-serif text-3xl text-[#315744]">{stats.count}</span> <span className="font-mono text-[9px] uppercase tracking-[.18em] text-[#859084]">{stats.count===1?'finished volume':'finished volumes'}</span></span>
+      <span data-testid="text-bought-count" className="text-sm text-[#526a59]">{boughtCount} bought, not yet read</span>
+      {stats.booksWithPages>0&&<span data-testid="text-shelf-pages" className="font-mono text-[10px] text-[#7d897e]">{stats.pagesKnown.toLocaleString()} finished pages{stats.booksWithoutPages>0?` across ${stats.booksWithPages} with a recorded page count`:''}</span>}
+      {stats.booksWithoutPages>0&&stats.booksWithPages===0&&<span className="font-mono text-[10px] text-[#7d897e]">Page counts not recorded</span>}
+    </div>
+    {stats.count===0&&<p className="mb-6 text-sm text-[#718075]">No finished books yet. Mark a book as read to add it to your finished shelves.</p>}
+    <BookshelfWall groups={groups}/>
+    <p className="mt-6 text-sm text-[#718075]">To add a bought book here, select “I own this book” in its record and leave its reading status as “Want to read” or “Reading”.</p>
+    <Link href="/books" className="mt-4 inline-flex text-xs font-semibold text-[#315744] underline underline-offset-4">Visit your library</Link>
+    </>}
   </AppShell>;
 }
 
