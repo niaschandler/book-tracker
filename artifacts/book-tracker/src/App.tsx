@@ -4,7 +4,7 @@ import { ClerkProvider, SignIn, SignUp, Show, useAuth, useClerk, useUser } from 
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import {
-  useCreateBook, useDeleteBook, useEnsureCurrentUser, useExportBooks, useGetBook, useGetDashboardSummary,
+  useCreateBook, useEnsureCurrentUser, useExportBooks, useGetBook, useGetDashboardSummary,
   useListBooks, usePickNextBook, useSearchCatalog, useSetBookStar, useUpdateBook,
   getListBooksQueryKey, getGetBookQueryKey, getGetDashboardSummaryQueryKey,
   getPickNextBookQueryKey, getSearchCatalogQueryKey, getExportBooksQueryKey,
@@ -19,6 +19,8 @@ import {
 import { Link, Redirect, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { DeleteBookDialog } from '@/components/DeleteBookDialog';
+import { refreshLibrary } from '@/lib/library-cache';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -224,11 +226,12 @@ function Dashboard() {
   </AppShell>;
 }
 
-function BookDialog({ open, onClose, initial }: { open: boolean; onClose: () => void; initial?: Book }) {
+function BookDialog({ open, onClose, initial, onSaved }: { open: boolean; onClose: () => void; initial?: Book; onSaved?: () => void }) {
   const qc = useQueryClient();
   const saved = async(book:Book)=>{
     qc.setQueryData(getGetBookQueryKey(book.id),book);
-    await Promise.all([qc.invalidateQueries({queryKey:getListBooksQueryKey()}),qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey()}),qc.invalidateQueries({queryKey:getPickNextBookQueryKey()}),qc.invalidateQueries({queryKey:getExportBooksQueryKey()})]);
+    await refreshLibrary(qc);
+    onSaved?.();
     onClose();
   };
   const create = useCreateBook({mutation:{onSuccess:saved}});
@@ -250,12 +253,13 @@ function BookDialog({ open, onClose, initial }: { open: boolean; onClose: () => 
     else create.mutate({data:payload});
   };
   const pending=create.isPending||update.isPending;
-  return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#1b3128]/55 p-3 backdrop-blur-sm" onClick={onClose}><div className="my-auto max-h-[94dvh] w-full max-w-[690px] overflow-y-auto rounded-[22px] border border-[#d9d0bd] bg-[#faf8f1] p-5 shadow-2xl md:p-8" onClick={e=>e.stopPropagation()}>
-    <div className="flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#a17d50]">{initial?'Update your record':'Add to your shelves'}</p><h2 className="mt-1 font-serif text-3xl">{initial?'Edit book details':'A new arrival'}</h2></div><button type="button" onClick={onClose} className="rounded-full p-2 text-[#718075] hover:bg-[#eee8db]"><X size={19}/></button></div>
+  const close=()=>{if(pending)return;create.reset();update.reset();onClose();};
+  return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#1b3128]/55 p-3 backdrop-blur-sm" onClick={close}><div role="dialog" aria-modal="true" aria-labelledby="book-form-title" aria-busy={pending} className="my-auto max-h-[94dvh] w-full max-w-[690px] overflow-y-auto rounded-[22px] border border-[#d9d0bd] bg-[#faf8f1] p-5 shadow-2xl md:p-8" onClick={e=>e.stopPropagation()}>
+    <div className="flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#a17d50]">{initial?'Update your record':'Add to your shelves'}</p><h2 id="book-form-title" className="mt-1 font-serif text-3xl">{initial?'Edit book details':'A new arrival'}</h2></div><button type="button" aria-label="Close book form" disabled={pending} onClick={close} className="rounded-full p-2 text-[#718075] hover:bg-[#eee8db]"><X size={19}/></button></div>
     {!initial&&<div className="mt-5"><label className="mb-2 block text-xs font-semibold text-[#526a59]">Find it in Open Library</label><div className="relative"><Search size={16} className="absolute left-3 top-3 text-[#829084]"/><input value={catalogQuery} onChange={e=>setCatalogQuery(e.target.value)} placeholder="Search by title or author" className="w-full rounded-xl border border-[#d8d2c4] bg-[#fffdf8] py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[#71917e]" /></div>
       {catalogQuery.trim().length>=2 && <div className="mt-2 max-h-40 overflow-auto rounded-xl border border-[#e2dccf] bg-[#fffdf8]">{catalog.isLoading?<p className="p-3 text-xs text-[#839084]">Looking through the catalog…</p>:catalog.isError?<p className="p-3 text-xs text-[#9a5e4d]">Catalog search is unavailable.</p>:catalog.data?.length?catalog.data.slice(0,5).map((b,i)=><button key={`${b.key}-${i}`} onClick={()=>applyCatalog(b)} className="flex w-full items-center justify-between border-b border-[#eee8dc] px-3 py-2 text-left last:border-0 hover:bg-[#f3eee3]"><span><strong className="block text-xs">{b.title}</strong><small className="text-[10px] text-[#7b897c]">{b.author}{b.publishedYear?` · ${b.publishedYear}`:''}</small></span><Plus size={14} className="text-[#58735f]"/></button>):<p className="p-3 text-xs text-[#839084]">No matching volumes yet. Add the details by hand below.</p>}</div>}
     </div>}
-    <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={submit}>
+    <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={submit}><fieldset disabled={pending} className="contents">
       <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-semibold">Title <b className="text-[#b8755b]">*</b></span><input required maxLength={300} value={title} onChange={e=>setTitle(e.target.value)} className="form-input" placeholder="The book's title"/></label>
       <label><span className="mb-1.5 block text-xs font-semibold">Authors <b className="text-[#b8755b]">*</b></span><input required maxLength={2000} value={author} onChange={e=>setAuthor(e.target.value)} className="form-input" placeholder="Separate authors with ;"/><span className="mt-1 block text-[10px] text-[#718075]">Use a semicolon between author names.</span></label>
       <label><span className="mb-1.5 block text-xs font-semibold">Genre</span><input value={genre} onChange={e=>setGenre(e.target.value)} className="form-input" placeholder="Literary fiction, history…"/></label>
@@ -272,8 +276,8 @@ function BookDialog({ open, onClose, initial }: { open: boolean; onClose: () => 
       <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-semibold">Book description</span><textarea maxLength={10000} rows={2} value={description} onChange={e=>setDescription(e.target.value)} className="form-input resize-y" placeholder="About this book"/></label>
       <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-semibold">Notes to your future self</span><textarea maxLength={10000} rows={3} value={notes} onChange={e=>setNotes(e.target.value)} className="form-input resize-y" placeholder="What would you like to remember?"/></label>
       {(create.isError||update.isError)&&<p className="sm:col-span-2 text-xs text-[#a7453c]">Could not save this book. Please check the details and try again.</p>}
-      <div className="mt-1 flex justify-end gap-2 sm:col-span-2"><button type="button" onClick={onClose} className="rounded-full px-5 py-2.5 text-xs font-semibold text-[#6b7a6e]">Cancel</button><button disabled={pending} className="rounded-full bg-[#285342] px-6 py-2.5 text-xs font-semibold text-[#fbf8f1] disabled:opacity-50">{pending?'Saving…':initial?'Save changes':'Add to library'}</button></div>
-    </form>
+      <div className="mt-1 flex justify-end gap-2 sm:col-span-2"><button type="button" onClick={close} className="rounded-full px-5 py-2.5 text-xs font-semibold text-[#6b7a6e]">Cancel</button><button disabled={pending} className="rounded-full bg-[#285342] px-6 py-2.5 text-xs font-semibold text-[#fbf8f1] disabled:opacity-50">{pending?'Saving…':initial?'Save changes':'Add to library'}</button></div>
+    </fieldset></form>
   </div></div>;
 }
 
@@ -285,23 +289,24 @@ function BookCard({book,onEdit,onDelete}:{book:Book;onEdit:(b:Book)=>void;onDele
       <button aria-label={book.starred?'Remove favorite':'Favorite book'} data-testid={`button-star-${book.id}`} onClick={toggle} className={`absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm transition ${book.starred?'bg-[#f3d997] text-[#73552d]':'bg-[#faf8f1dd] text-[#758075] opacity-0 group-hover:opacity-100 focus:opacity-100'}`}><Star size={15} fill={book.starred?'currentColor':'none'}/></button>
       <div className="absolute bottom-2 left-2 rounded-sm bg-[#f8f3e8e8] px-2 py-1 font-mono text-[8px] uppercase tracking-[.1em] text-[#506958]">{statusLabels[book.status]}{book.isOwned?' · Owned':''}</div>
     </div>
-    <div className="mt-3 flex items-start justify-between gap-1"><Link href={`/books/${book.id}`} className="min-w-0 text-[#263e34] no-underline"><h3 className="line-clamp-2 font-serif text-[18px] leading-[1.05]">{book.title}</h3><p className="mt-1.5 truncate text-[11px] text-[#788477]">{book.author}</p></Link><div className="flex gap-2"><button aria-label={`Edit ${book.title}`} onClick={()=>onEdit(book)} className="mt-1 text-[#8e988a] opacity-0 transition hover:text-[#315744] group-hover:opacity-100"><SlidersHorizontal size={15}/></button><button aria-label={`Remove ${book.title}`} onClick={()=>onDelete(book)} className="mt-1 text-[#a46b5c] opacity-0 transition hover:text-[#a7453c] group-hover:opacity-100"><Trash2 size={15}/></button></div></div>
+    <div className="mt-3 flex items-start justify-between gap-1"><Link href={`/books/${book.id}`} className="min-w-0 text-[#263e34] no-underline"><h3 className="line-clamp-2 font-serif text-[18px] leading-[1.05]">{book.title}</h3><p className="mt-1.5 truncate text-[11px] text-[#788477]">{book.author}</p></Link><div className="flex gap-2"><button aria-label={`Edit ${book.title}`} onClick={()=>onEdit(book)} className="mt-1 text-[#8e988a] transition hover:text-[#315744] focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"><SlidersHorizontal size={15}/></button><button aria-label={`Remove ${book.title}`} onClick={()=>onDelete(book)} className="mt-1 text-[#a46b5c] transition hover:text-[#a7453c] focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={15}/></button></div></div>
     {book.rating&&<div className="mt-2 text-[10px] tracking-[.1em] text-[#b08443]">{'★'.repeat(book.rating)}<span className="text-[#d9d1c0]">{'☆'.repeat(5-book.rating)}</span></div>}
   </article>;
 }
 
 function BooksPage() {
-  const qc=useQueryClient();const [search,setSearch]=useState('');const [status,setStatus]=useState('all');const [genre,setGenre]=useState('all');const [starred,setStarred]=useState(false);const [sort,setSort]=useState<'newest'|'title'|'rating'|'pages'>('newest');
+  const [search,setSearch]=useState('');const [status,setStatus]=useState('all');const [genre,setGenre]=useState('all');const [starred,setStarred]=useState(false);const [sort,setSort]=useState<'newest'|'title'|'rating'|'pages'>('newest');
+  const [deleting,setDeleting]=useState<Book|null>(null);
   const [ownedOnly,setOwnedOnly]=useState(false);
   const [modal,setModal]=useState(false);const [editing,setEditing]=useState<Book|undefined>();const [message,setMessage]=useState('');
   const params=useMemo<ListBooksParams>(()=>({search:search||undefined,status:status==='all'?undefined:status as BookStatus,genre:genre==='all'?undefined:genre,starredOnly:starred||undefined,isOwned:ownedOnly||undefined,sort}),[search,status,genre,starred,ownedOnly,sort]);
   const query=useListBooks(params,{query:{queryKey:getListBooksQueryKey(params)}});
-  const remove=useDeleteBook();const exportQuery=useExportBooks({query:{queryKey:getExportBooksQueryKey(),enabled:false}});
+  const exportQuery=useExportBooks({query:{queryKey:getExportBooksQueryKey(),enabled:false}});
   const genreOptions=useMemo(()=>Array.from(new Set((query.data||[]).map(b=>b.genre).filter(Boolean) as string[])).sort(),[query.data]);
   const hasFilters=Boolean(search||starred||ownedOnly||status!=='all'||genre!=='all');
   const openEdit=(b:Book)=>{setEditing(b);setModal(true);};
   const closeModal=()=>{setModal(false);setEditing(undefined);};
-  const deleteBook=(b:Book)=>{if(!window.confirm(`Remove “${b.title}” from your library?`))return;remove.mutate({id:b.id},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListBooksQueryKey()});qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey()});setMessage('Book removed from your library.');}});};
+  const deleteBook=(b:Book)=>setDeleting(b);
   const exportCsv=async()=>{const result=await exportQuery.refetch();if(result.data){const fields=Object.keys(result.data[0]||{title:'',author:'',genre:'',pages:'',rating:'',status:'',isOwned:'',isbn:'',description:'',moodTags:'',notes:'',startedOn:'',finishedOn:''});const esc=(v:unknown)=>`"${String(Array.isArray(v)?v.join('|'):v??'').replaceAll('"','""')}"`;const csv=[fields.join(','),...result.data.map(row=>fields.map(k=>esc((row as unknown as Record<string,unknown>)[k])).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='marginalia-library.csv';a.click();URL.revokeObjectURL(url);setMessage('Your library export is ready.');}};
   return <AppShell section="/books"><PageTitle eyebrow="The catalog" title="My library." sub="Every volume has a place. Search your shelves, sort the story, or add something new." action={<button onClick={()=>{setEditing(undefined);setModal(true);}} className="inline-flex items-center gap-2 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] hover:bg-[#1f4536]"><Plus size={16}/> Add a book</button>}/>
     <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#ded7c8] bg-[#faf8f1] p-3 md:flex-row md:items-center">
@@ -311,17 +316,16 @@ function BooksPage() {
     <label className="mb-5 flex items-center gap-2 text-xs text-[#526a59]"><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} className="accent-[#285342]"/>Show only books I own</label>
     {message&&<div className="mb-4 flex items-center justify-between rounded-xl bg-[#e5ecdf] px-4 py-2.5 text-xs text-[#42634f]"><span>{message}</span><button onClick={()=>setMessage('')} aria-label="Dismiss message"><X size={14}/></button></div>}
     {query.isLoading?<SkeletonGrid/>:query.isError?<ErrorMessage retry={()=>query.refetch()}/>:query.data?.length?<><p className="mb-5 font-mono text-[9px] uppercase tracking-[.17em] text-[#869084]">{query.data.length} {query.data.length===1?'volume':'volumes'} in view</p><div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">{query.data.map(book=><BookCard key={book.id} book={book} onEdit={openEdit} onDelete={deleteBook}/>)}</div></>:<div className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-14 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e2d3] text-[#62806d]"><BookOpen size={25}/></div><h2 className="mt-5 font-serif text-3xl text-[#315744]">{hasFilters?'No books on this particular shelf.':'The shelves are waiting.'}</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#778477]">{hasFilters?'Try another search or loosen your filters. Your books are still here.':'Begin with the book beside your bed, the one you finished last month, or a story you cannot wait to open.'}</p><button onClick={()=>{setSearch('');setStatus('all');setGenre('all');setStarred(false);setOwnedOnly(false);if(!hasFilters){setEditing(undefined);setModal(true);}}} className="mt-6 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">{hasFilters?'Clear filters':'Add your first book'}</button></div>}
-    {remove.isError&&<p className="mt-4 text-xs text-[#a7453c]">Could not remove this book. Please try again.</p>}
-    <BookDialog open={modal} initial={editing} onClose={closeModal}/>
+    <DeleteBookDialog book={deleting} onClose={()=>setDeleting(null)} onDeleted={()=>setMessage('Book removed from your library.')}/>
+    <BookDialog open={modal} initial={editing} onClose={closeModal} onSaved={()=>setMessage(editing?'Changes saved.':'Book added to your library.')}/>
   </AppShell>;
 }
 
 function BookDetail({id}:{id:number}) {
-  const qc=useQueryClient();const query=useGetBook(id,{query:{queryKey:getGetBookQueryKey(id),enabled:Number.isFinite(id),retry:false}});const update=useUpdateBook();const remove=useDeleteBook();const star=useSetBookStar();
+  const qc=useQueryClient();const query=useGetBook(id,{query:{queryKey:getGetBookQueryKey(id),enabled:Number.isFinite(id),retry:false}});const update=useUpdateBook();const star=useSetBookStar();
   const [editing,setEditing]=useState(false);const [confirmDelete,setConfirmDelete]=useState(false);const [,setLocation]=useLocation();
   const book=query.data;
   const changeStatus=(status:BookStatus)=>{if(!book)return;update.mutate({id,data:{status}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getGetBookQueryKey(id)});qc.invalidateQueries({queryKey:getListBooksQueryKey()});qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey()});}});};
-  const deleteCurrent=()=>remove.mutate({id},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListBooksQueryKey()});qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey()});setLocation('/books');}});
   if(query.isLoading)return <AppShell section="/books"><div className="grid animate-pulse gap-8 md:grid-cols-[260px_1fr]"><div className="aspect-[.68] rounded-xl bg-[#e2ddcf]"/><div className="h-64 rounded-xl bg-[#e2ddcf]"/></div></AppShell>;
   if(query.isError&&query.error.status!==404)return <AppShell section="/books"><ErrorMessage retry={()=>query.refetch()}/></AppShell>;
   if(!book||query.isError)return <AppShell section="/books"><div role="status" className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-14 text-center"><h1 className="font-serif text-3xl text-[#315744]">Book not found</h1><p className="mt-3 text-sm text-[#778477]">This book is no longer in your library.</p><Link href="/books" className="mt-6 inline-flex rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">Back to your library</Link></div></AppShell>;
@@ -334,9 +338,10 @@ function BookDetail({id}:{id:number}) {
         {book.description&&<p className="mt-4 max-w-[760px] whitespace-pre-wrap text-sm leading-6 text-[#526a59]">{book.description}</p>}
         <div className="mt-7 grid max-w-[760px] gap-5 sm:grid-cols-2"><div><p className="font-mono text-[9px] uppercase tracking-[.17em] text-[#a17d50]">Reading dates</p><p className="mt-2 text-sm text-[#526a59]">{book.startedOn?`Started ${prettyDate(book.startedOn)}`:'No start date recorded'}{book.finishedOn?` · finished ${prettyDate(book.finishedOn)}`:''}</p></div>{book.moodTags?.length>0&&<div><p className="font-mono text-[9px] uppercase tracking-[.17em] text-[#a17d50]">The feeling</p><div className="mt-2 flex flex-wrap gap-2">{book.moodTags.map(tag=><span key={tag} className="rounded-full bg-[#e7e1d3] px-3 py-1 text-[11px] text-[#526a59]">{tag}</span>)}</div></div>}</div>
         <div className="mt-8 max-w-[760px] rounded-2xl bg-[#ebe4d6] p-5 md:p-7"><p className="font-mono text-[9px] uppercase tracking-[.17em] text-[#a17d50]">Notes to self</p><p className="mt-3 whitespace-pre-wrap font-serif text-xl leading-relaxed text-[#3b5a47]">{book.notes||'Nothing written down yet. A sentence, a thought, a favorite passage — leave a note for the reader you will be later.'}</p></div>
-        <div className="mt-6"><button onClick={()=>setConfirmDelete(!confirmDelete)} className="inline-flex items-center gap-2 text-xs text-[#a35e4d]"><Trash2 size={14}/> Remove from my library</button>{confirmDelete&&<div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#e4c8be] bg-[#fbefeb] p-3 text-xs text-[#704c43]"><span>Remove this volume from your collection?</span><button onClick={deleteCurrent} className="rounded-full bg-[#a7453c] px-4 py-2 text-white">Yes, remove</button><button onClick={()=>setConfirmDelete(false)} className="px-2 py-2">Keep it</button></div>}{(update.isError||remove.isError)&&<p className="mt-2 text-xs text-[#a7453c]">That change could not be saved.</p>}</div>
+        <div className="mt-6"><button onClick={()=>setConfirmDelete(true)} className="inline-flex items-center gap-2 text-xs text-[#a35e4d]"><Trash2 size={14}/> Remove from my library</button>{update.isError&&<p className="mt-2 text-xs text-[#a7453c]">That change could not be saved.</p>}</div>
       </div></div>
     <BookDialog open={editing} initial={book} onClose={()=>setEditing(false)}/>
+    <DeleteBookDialog book={confirmDelete?book:null} onClose={()=>setConfirmDelete(false)} onDeleted={()=>setLocation('/books')}/>
   </AppShell>;
 }
 
