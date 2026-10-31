@@ -21,6 +21,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DeleteBookDialog } from '@/components/DeleteBookDialog';
 import { refreshLibrary } from '@/lib/library-cache';
+import { requiredBookErrors } from '@/lib/book-form-validation';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -237,6 +238,9 @@ function BookDialog({ open, onClose, initial, onSaved }: { open: boolean; onClos
   const create = useCreateBook({mutation:{onSuccess:saved}});
   const update = useUpdateBook({mutation:{onSuccess:saved}});
   const [title,setTitle]=useState(''); const [author,setAuthor]=useState(''); const [genre,setGenre]=useState('');
+  const [validationAttempted,setValidationAttempted]=useState(false);
+  const fieldErrors=validationAttempted?requiredBookErrors(title,author):{title:undefined,author:undefined};
+  useEffect(()=>{if(open)setValidationAttempted(false);},[open,initial]);
   const [pages,setPages]=useState(''); const [rating,setRating]=useState(''); const [publishedYear,setPublishedYear]=useState('');
   const [startedOn,setStartedOn]=useState(''); const [finishedOn,setFinishedOn]=useState(''); const [coverUrl,setCoverUrl]=useState('');
   const [openLibraryId,setOpenLibraryId]=useState(''); const [status,setStatus]=useState<BookStatus>('want_to_read');
@@ -246,8 +250,15 @@ function BookDialog({ open, onClose, initial, onSaved }: { open: boolean; onClos
   const catalog = useSearchCatalog(searchParams, {query:{queryKey:getSearchCatalogQueryKey(searchParams),enabled:searchParams.q.length >= 2}});
   useEffect(()=>{if(open){setTitle(initial?.title||'');setAuthor(initial?.authors?.join('; ')||initial?.author||'');setGenre(initial?.genre||'');setPages(initial?.pages?.toString()||'');setRating(initial?.rating?.toString()||'');setPublishedYear(initial?.publishedYear?.toString()||'');setStartedOn(initial?.startedOn?.slice(0,10)||'');setFinishedOn(initial?.finishedOn?.slice(0,10)||'');setCoverUrl(initial?.coverUrl||'');setOpenLibraryId(initial?.openLibraryId||'');setStatus(initial?.status||'want_to_read');setIsOwned(initial?.isOwned??false);setIsbn(initial?.isbn||'');setDescription(initial?.description||'');setMoods(initial?.moodTags?.join(', ')||'');setNotes(initial?.notes||'');setCatalogQuery('');}},[open,initial]);
   if (!open) return null;
-  const applyCatalog=(b:CatalogBook)=>{setTitle(b.title);setAuthor(b.author);setGenre(b.genre||'');setPages(b.pages?.toString()||'');setPublishedYear(b.publishedYear?.toString()||'');setCoverUrl(b.coverUrl||'');setOpenLibraryId(b.key);};
-  const submit=(e:FormEvent)=>{e.preventDefault();if(!title.trim()||!author.trim())return;
+  const applyCatalog=(b:CatalogBook)=>{setValidationAttempted(false);setTitle(b.title);setAuthor(b.author);setGenre(b.genre||'');setPages(b.pages?.toString()||'');setPublishedYear(b.publishedYear?.toString()||'');setCoverUrl(b.coverUrl||'');setOpenLibraryId(b.key);};
+  const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();
+    setValidationAttempted(true);
+    const errors=requiredBookErrors(title,author);
+    if(errors.title||errors.author){
+      e.currentTarget.querySelector<HTMLInputElement>(errors.title?'#book-title':'#book-author')?.focus();
+      return;
+    }
+    if(!e.currentTarget.reportValidity())return;
     const payload: BookInput = {title:title.trim(),author:author.trim(),authors:author.split(';').map(a=>a.trim()).filter(Boolean),genre:genre||null,pages:pages?Number(pages):null,rating:rating?Number(rating):null,status,isOwned,isbn:isbn||null,description:description||null,moodTags:moods.split(',').map(t=>t.trim()).filter(Boolean),notes:notes||null,coverUrl:coverUrl||null,openLibraryId:openLibraryId||null,publishedYear:publishedYear?Number(publishedYear):null,startedOn:startedOn||null,finishedOn:finishedOn||null};
     if(initial) update.mutate({id:initial.id,data:payload as BookUpdate});
     else create.mutate({data:payload});
@@ -259,9 +270,10 @@ function BookDialog({ open, onClose, initial, onSaved }: { open: boolean; onClos
     {!initial&&<div className="mt-5"><label className="mb-2 block text-xs font-semibold text-[#526a59]">Find it in Open Library</label><div className="relative"><Search size={16} className="absolute left-3 top-3 text-[#829084]"/><input value={catalogQuery} onChange={e=>setCatalogQuery(e.target.value)} placeholder="Search by title or author" className="w-full rounded-xl border border-[#d8d2c4] bg-[#fffdf8] py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[#71917e]" /></div>
       {catalogQuery.trim().length>=2 && <div className="mt-2 max-h-40 overflow-auto rounded-xl border border-[#e2dccf] bg-[#fffdf8]">{catalog.isLoading?<p className="p-3 text-xs text-[#839084]">Looking through the catalog…</p>:catalog.isError?<p className="p-3 text-xs text-[#9a5e4d]">Catalog search is unavailable.</p>:catalog.data?.length?catalog.data.slice(0,5).map((b,i)=><button key={`${b.key}-${i}`} onClick={()=>applyCatalog(b)} className="flex w-full items-center justify-between border-b border-[#eee8dc] px-3 py-2 text-left last:border-0 hover:bg-[#f3eee3]"><span><strong className="block text-xs">{b.title}</strong><small className="text-[10px] text-[#7b897c]">{b.author}{b.publishedYear?` · ${b.publishedYear}`:''}</small></span><Plus size={14} className="text-[#58735f]"/></button>):<p className="p-3 text-xs text-[#839084]">No matching volumes yet. Add the details by hand below.</p>}</div>}
     </div>}
-    <form className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={submit}><fieldset disabled={pending} className="contents">
-      <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-semibold">Title <b className="text-[#b8755b]">*</b></span><input required maxLength={300} value={title} onChange={e=>setTitle(e.target.value)} className="form-input" placeholder="The book's title"/></label>
-      <label><span className="mb-1.5 block text-xs font-semibold">Authors <b className="text-[#b8755b]">*</b></span><input required maxLength={2000} value={author} onChange={e=>setAuthor(e.target.value)} className="form-input" placeholder="Separate authors with ;"/><span className="mt-1 block text-[10px] text-[#718075]">Use a semicolon between author names.</span></label>
+    <form noValidate className="mt-5 grid gap-4 sm:grid-cols-2" onSubmit={submit}><fieldset disabled={pending} className="contents">
+      <p className="sm:col-span-2 text-xs text-[#718075]">Fields marked * are required.</p>
+      <label className="sm:col-span-2"><span className="mb-1.5 block text-xs font-semibold">Title <b className="text-[#b8755b]">*</b></span><input id="book-title" required maxLength={300} value={title} onChange={e=>setTitle(e.target.value)} aria-invalid={!!fieldErrors.title} aria-describedby={fieldErrors.title?'book-title-error':undefined} className={`form-input ${fieldErrors.title?'!border-[#a7453c]':''}`} placeholder="The book's title"/>{fieldErrors.title&&<span id="book-title-error" role="alert" className="mt-1 block text-xs text-[#a7453c]">{fieldErrors.title}</span>}</label>
+      <label><span className="mb-1.5 block text-xs font-semibold">Authors <b className="text-[#b8755b]">*</b></span><input id="book-author" required maxLength={2000} value={author} onChange={e=>setAuthor(e.target.value)} aria-invalid={!!fieldErrors.author} aria-describedby={fieldErrors.author?'book-author-error book-author-hint':'book-author-hint'} className={`form-input ${fieldErrors.author?'!border-[#a7453c]':''}`} placeholder="Separate authors with ;"/>{fieldErrors.author&&<span id="book-author-error" role="alert" className="mt-1 block text-xs text-[#a7453c]">{fieldErrors.author}</span>}<span id="book-author-hint" className="mt-1 block text-[10px] text-[#718075]">Use a semicolon between author names.</span></label>
       <label><span className="mb-1.5 block text-xs font-semibold">Genre</span><input value={genre} onChange={e=>setGenre(e.target.value)} className="form-input" placeholder="Literary fiction, history…"/></label>
       <label><span className="mb-1.5 block text-xs font-semibold">Pages</span><input type="number" min="1" value={pages} onChange={e=>setPages(e.target.value)} className="form-input" placeholder="—"/></label>
       <label><span className="mb-1.5 block text-xs font-semibold">Rating</span><select value={rating} onChange={e=>setRating(e.target.value)} className="form-input"><option value="">Not rated</option>{[5,4,3,2,1].map(x=><option key={x} value={x}>{'★'.repeat(x)}{'☆'.repeat(5-x)} · {x}</option>)}</select></label>
