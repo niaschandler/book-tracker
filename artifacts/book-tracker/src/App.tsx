@@ -69,7 +69,7 @@ function AppShell({ children, section }: { children: ReactNode; section: string 
     <aside className={`fixed inset-y-0 left-0 z-40 flex w-[250px] flex-col bg-[#1e4939] px-5 pb-6 pt-7 text-[#f4efdf] transition-transform duration-300 md:translate-x-0 ${mobileNav ? 'translate-x-0' : '-translate-x-full'}`}>
       <Link href="/dashboard" className="mb-11 flex items-center gap-3 no-underline" onClick={() => setMobileNav(false)}>
         <span className="grid h-10 w-10 place-items-center rounded-full border border-[#d7b66d]/60 text-[#e5c781]"><BookOpen size={19}/></span>
-        <span><span className="block font-serif text-[21px] leading-none tracking-wide">Marginalia</span><span className="mt-1 block font-mono text-[8px] uppercase tracking-[.22em] text-[#b8c5b5]">Personal reading room</span></span>
+        <span><span className="block font-serif text-[21px] leading-none tracking-wide">Reading Room</span><span className="mt-1 block font-mono text-[8px] uppercase tracking-[.22em] text-[#b8c5b5]">Personal reading room</span></span>
       </Link>
       <p className="mb-3 pl-3 font-mono text-[9px] uppercase tracking-[.2em] text-[#9db09f]">Your collection</p>
       <nav className="space-y-1">
@@ -100,7 +100,7 @@ function HomePage() {
   if (isLoaded && isSignedIn) return <Redirect to="/dashboard"/>;
   return <div className="min-h-[100dvh] overflow-hidden bg-[#f1eddf] text-[#263e34]">
     <header className="relative z-10 mx-auto flex max-w-[1360px] items-center justify-between px-6 py-6 md:px-12">
-      <Link href="/" className="flex items-center gap-3 text-[#234b39] no-underline"><BookOpen size={23}/><span className="font-serif text-xl">Marginalia</span></Link>
+      <Link href="/" className="flex items-center gap-3 text-[#234b39] no-underline"><BookOpen size={23}/><span className="font-serif text-xl">Reading Room</span></Link>
       <div className="flex items-center gap-5"><Link href="/sign-in" className="text-xs font-semibold text-[#315744] no-underline">Sign in</Link><Link href="/sign-up" className="rounded-full bg-[#285342] px-5 py-2.5 text-xs font-semibold text-[#f8f2e3] no-underline hover:bg-[#1f4536]">Make it yours</Link></div>
     </header>
     <section className="library-paper relative mx-auto grid min-h-[650px] max-w-[1440px] items-center gap-10 px-6 pb-20 pt-12 md:grid-cols-[1.05fr_.95fr] md:px-16 md:pb-28 md:pt-10">
@@ -280,7 +280,7 @@ function BooksPage({starredView=false}:{starredView?:boolean}) {
   const [ownedOnly,setOwnedOnly]=useState(false);
   const [modal,setModal]=useState(false);const [editing,setEditing]=useState<Book|undefined>();const [message,setMessage]=useState('');
   const params=useMemo<ListBooksParams>(()=>({search:search.trim()||undefined,status:status==='all'?undefined:status as BookStatus,genre:genre==='all'?undefined:genre,starredOnly:starredView||starred||undefined,isOwned:ownedOnly||undefined,sort}),[search,status,genre,starred,starredView,ownedOnly,sort]);
-  useEffect(()=>{document.title=starredView?'Starred books | Marginalia':'My library | Marginalia';},[starredView]);
+  useEffect(()=>{document.title=starredView?'Starred books | Reading Room':'My library | Reading Room';},[starredView]);
   const query=useListBooks(params,{query:{queryKey:getListBooksQueryKey(params)}});
   const library=useListBooks(undefined,{query:{queryKey:getListBooksQueryKey()}});
   const genreOptions=useMemo(()=>Array.from(new Set([...(library.data||[]).map(b=>b.genre),...(genre!=='all'?[genre]:[])].filter(Boolean) as string[])).sort(),[library.data,genre]);
@@ -344,7 +344,7 @@ function BookDetail({id}:{id:number}) {
 
 function Shelf() {
   const books=useListBooks(undefined,{query:{queryKey:getListBooksQueryKey()}});
-  useEffect(()=>{document.title='Bookshelf | Marginalia';},[]);
+  useEffect(()=>{document.title='Bookshelf | Reading Room';},[]);
   const groups=useMemo(()=>bookshelfGroups(books.data),[books.data]);
   const stats=useMemo(()=>shelfStats(books.data),[books.data]);
   const boughtCount=groups.find(group=>group.key==='bought-unread')?.books.length??0;
@@ -375,17 +375,17 @@ function AuthPanel({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   if (isLoaded && isSignedIn) return <Redirect to="/dashboard"/>;
   const newcomer = mode === 'sign-up';
   return <div className="library-paper relative flex min-h-[100dvh] items-center justify-center bg-[#f1eddf] px-4 py-24">
-    <div className="absolute left-6 top-7 md:left-10"><Link href="/" className="flex items-center gap-2 font-serif text-xl text-[#234b39] no-underline"><img src={`${assetBase}logo.svg`} alt="" className="h-7 w-7"/> Marginalia</Link></div>
+    <div className="absolute left-6 top-7 md:left-10"><Link href="/" className="flex items-center gap-2 font-serif text-xl text-[#234b39] no-underline"><img src={`${assetBase}logo.svg`} alt="" className="h-7 w-7"/> Reading Room</Link></div>
     <section aria-labelledby="auth-title" className="fade-up w-[460px] max-w-full rounded-[22px] border border-[#e1d9c8] bg-[#fbf8f1] p-7 shadow-[0_24px_70px_rgba(26,54,40,.16)] md:p-9">
       <p className="font-mono text-[9px] uppercase tracking-[.22em] text-[#a17d50]">{newcomer ? 'A new reading room' : 'Return to your shelves'}</p>
       <h1 id="auth-title" className="mt-2 font-serif text-4xl leading-[1.02] text-[#263e34]">{newcomer ? 'Make room for stories.' : 'Welcome back, reader.'}</h1>
-      <p className="mt-3 text-sm leading-6 text-[#718276]">Marginalia uses your Replit account to sign you in. {newcomer ? 'If you do not have one yet, Replit will let you create it in the next step, then send you straight back here.' : 'You will confirm on Replit, then return to your library.'} No separate password to remember.</p>
+      <p className="mt-3 text-sm leading-6 text-[#718276]">Reading Room uses your Replit account to sign you in. {newcomer ? 'If you do not have one yet, Replit will let you create it in the next step, then send you straight back here.' : 'You will confirm on Replit, then return to your library.'} No separate password to remember.</p>
       {(loginError || restoreError) && <div role="alert" data-testid="error-auth" className="mt-5 rounded-xl border border-[#ead0c9] bg-[#fbefeb] p-3.5 text-sm leading-6 text-[#8b332c]">{loginError || restoreError}{restoreError && !loginError && <button type="button" data-testid="button-retry-session" onClick={retryRestore} className="ml-2 font-semibold underline">Try again</button>}</div>}
       <button type="button" data-testid="button-continue-replit" onClick={() => void signIn()} disabled={signingIn || !isLoaded} aria-busy={signingIn}
         className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full bg-[#285342] px-6 py-3.5 text-sm font-semibold text-[#fbf8f1] transition hover:-translate-y-0.5 hover:bg-[#1f4536] disabled:translate-y-0 disabled:opacity-60">
         {signingIn ? 'Opening Replit…' : !isLoaded ? 'Checking your session…' : <>Continue with Replit <ArrowRight size={16}/></>}
       </button>
-      <p className="mt-3 text-center text-[11px] text-[#8b9588]">{newcomer ? <>Already reading here? <Link href="/sign-in" className="font-semibold text-[#285342]">Sign in</Link></> : <>New to Marginalia? <Link href="/sign-up" className="font-semibold text-[#285342]">Start a library</Link></>}</p>
+      <p className="mt-3 text-center text-[11px] text-[#8b9588]">{newcomer ? <>Already reading here? <Link href="/sign-in" className="font-semibold text-[#285342]">Sign in</Link></> : <>New to Reading Room? <Link href="/sign-up" className="font-semibold text-[#285342]">Start a library</Link></>}</p>
       <div className="mt-7 border-t border-[#e7e1d5] pt-5">
         <p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a7950]">Signed in another way before?</p>
         <p className="mt-2 text-xs leading-5 text-[#718075]">Libraries from the previous sign-in system are kept safely, but they are not linked automatically, even when the email address matches. Ask the site owner to link your earlier library to your Replit account.</p>

@@ -109,5 +109,5 @@ test('API contract retains complete export details and real star flags', () => {
 });
 
 test('export filename is dated and ends in the correct spreadsheet extension', () => {
-  assert.equal(exportFilename(at), 'marginalia-library-2026-10-31.xlsx');
+  assert.equal(exportFilename(at), 'reading-room-library-2026-10-31.xlsx');
 });

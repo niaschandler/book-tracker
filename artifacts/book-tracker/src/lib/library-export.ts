@@ -28,14 +28,14 @@ const columns: { header: string; width: number; value: (book: BookExport) => str
 ];
 
 export function exportFilename(at = new Date()): string {
-  return `marginalia-library-${at.toISOString().slice(0, 10)}.xlsx`;
+  return `reading-room-library-${at.toISOString().slice(0, 10)}.xlsx`;
 }
 
 /** Literal strings, not formulas, preserve ISBNs and safely handle user-entered text. */
 export async function createLibrarySpreadsheet(books: readonly BookExport[], at = new Date()): Promise<Uint8Array> {
   if (books.length > 1_048_575) throw new Error('This library exceeds the Excel row limit.');
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Marginalia';
+  workbook.creator = 'Reading Room';
   workbook.created = at;
   const sheet = workbook.addWorksheet('Books', { views: [{ state: 'frozen', ySplit: 1 }] });
   sheet.columns = columns.map(({ header, width }) => ({ header, width }));

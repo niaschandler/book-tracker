@@ -1,6 +1,6 @@
-# Book Tracker
+# Reading Room
 
-A real list of books I have read, own, and hope to read. Book Tracker is a private reading library built for collecting books, keeping reading notes, and finding the next good read.
+A real list of books I have read, own, and hope to read. Reading Room is a private reading library built for collecting books, keeping reading notes, and finding the next good read.
 
 ## Product vision
 

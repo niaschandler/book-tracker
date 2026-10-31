@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Book Tracker"
+title = "Reading Room"
 description = "A personal reading library for tracking books read, books owned, and books to read. Includes private accounts, book CRUD, stars, search and sorting, reading insights, a virtual bookshelf, a filtered random picker, and CSV export."
 version = "1.0.0"
 id = "artifacts/book-tracker"

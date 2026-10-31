@@ -28,7 +28,7 @@ function Panel({ icon, eyebrow, title, body, children, testId }: { icon: ReactNo
 }
 
 export function NextBookPicker() {
-  useEffect(() => { document.title = 'Choose a book | Marginalia'; }, []);
+  useEffect(() => { document.title = 'Choose a book | Reading Room'; }, []);
   const [filters, setFilters] = useState<PickFilters>(empty);
   const [attempted, setAttempted] = useState(false);
   const [drawn, setDrawn] = useState(false);

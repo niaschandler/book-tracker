@@ -70,8 +70,8 @@ function ImportLibraryFlow({ owner }: { owner: string }) {
       <DialogContent className="max-w-3xl bg-[#faf8f1]" aria-busy={busy}
         onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
         onPointerDownOutside={event => { if (busy) event.preventDefault(); }}>
-        <DialogTitle>Bring your books into Marginalia</DialogTitle>
-        <DialogDescription>Choose an Excel (.xlsx) reading list, including a Marginalia export. Nothing is saved until you confirm. Existing books are never overwritten.</DialogDescription>
+        <DialogTitle>Bring your books into Reading Room</DialogTitle>
+        <DialogDescription>Choose an Excel (.xlsx) reading list, including a Reading Room export. Nothing is saved until you confirm. Existing books are never overwritten.</DialogDescription>
         <label className="text-sm text-[#285342]">Reading list spreadsheet
           <input type="file" accept=".xlsx" disabled={busy} data-testid="input-import-file" className="mt-2 block w-full text-xs"
             onChange={event => {

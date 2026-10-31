@@ -4,7 +4,7 @@ The website runs on **GitHub Pages**. The API, PostgreSQL database, sessions,
 and **Sign in with Replit** run on Replit. No Auth0, external Clerk tenant,
 email/password service, or additional database provider is required.
 
-Visitors use or create a Replit account. Marginalia does not store passwords.
+Visitors use or create a Replit account. Reading Room does not store passwords.
 
 ## 1. Prepare the Replit backend
 

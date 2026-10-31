@@ -1,4 +1,4 @@
-# Book Tracker
+# Reading Room
 
 A personal reading library for tracking books read, owned, and wanted, with private accounts, reading insights, a virtual bookshelf, a filtered random picker, Open Library lookup, and CSV export.
 
@@ -45,7 +45,7 @@ Users can manage a private reading library, track progress and ratings, browse t
 
 ## Spreadsheet import
 
-- My library → Import spreadsheet accepts Excel `.xlsx` files, including complete Marginalia exports (and their Long text sheet).
+- My library → Import spreadsheet accepts Excel `.xlsx` files, including complete Reading Room exports (and their Long text sheet).
 - Files are parsed locally, not stored. Limits: 10 MB per file, 2,000 books per import, 1,000,000 characters per notes/description field.
 - Users can change column mappings, preview row problems and duplicates, then explicitly confirm valid new rows. Invalid and duplicate rows are skipped; existing records are never overwritten.
 - Missing optional fields remain blank; unmapped status defaults to Want to read, ownership and stars to No. Original export timestamps are retained when present.
