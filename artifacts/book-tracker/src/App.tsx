@@ -311,12 +311,14 @@ function BooksPage({starredView=false}:{starredView?:boolean}) {
   const [deleting,setDeleting]=useState<Book|null>(null);
   const [ownedOnly,setOwnedOnly]=useState(false);
   const [modal,setModal]=useState(false);const [editing,setEditing]=useState<Book|undefined>();const [message,setMessage]=useState('');
-  const params=useMemo<ListBooksParams>(()=>({search:search||undefined,status:status==='all'?undefined:status as BookStatus,genre:genre==='all'?undefined:genre,starredOnly:starredView||starred||undefined,isOwned:ownedOnly||undefined,sort}),[search,status,genre,starred,starredView,ownedOnly,sort]);
+  const params=useMemo<ListBooksParams>(()=>({search:search.trim()||undefined,status:status==='all'?undefined:status as BookStatus,genre:genre==='all'?undefined:genre,starredOnly:starredView||starred||undefined,isOwned:ownedOnly||undefined,sort}),[search,status,genre,starred,starredView,ownedOnly,sort]);
   useEffect(()=>{document.title=starredView?'Starred books | Marginalia':'My library | Marginalia';},[starredView]);
   const query=useListBooks(params,{query:{queryKey:getListBooksQueryKey(params)}});
+  const library=useListBooks(undefined,{query:{queryKey:getListBooksQueryKey()}});
   const exportQuery=useExportBooks({query:{queryKey:getExportBooksQueryKey(),enabled:false}});
-  const genreOptions=useMemo(()=>Array.from(new Set((query.data||[]).map(b=>b.genre).filter(Boolean) as string[])).sort(),[query.data]);
-  const hasFilters=Boolean(search||starred||ownedOnly||status!=='all'||genre!=='all');
+  const genreOptions=useMemo(()=>Array.from(new Set([...(library.data||[]).map(b=>b.genre),...(genre!=='all'?[genre]:[])].filter(Boolean) as string[])).sort(),[library.data,genre]);
+  const hasFilters=Boolean(search.trim()||starred||ownedOnly||status!=='all'||genre!=='all');
+  const clearFilters=()=>{setSearch('');setStatus('all');setGenre('all');setStarred(false);setOwnedOnly(false);setSort('newest');};
   const openEdit=(b:Book)=>{setEditing(b);setModal(true);};
   const closeModal=()=>{setModal(false);setEditing(undefined);};
   const deleteBook=(b:Book)=>setDeleting(b);
@@ -327,18 +329,22 @@ function BooksPage({starredView=false}:{starredView?:boolean}) {
       <div className="flex flex-wrap gap-2">
         <select aria-label="Filter by status" value={status} onChange={e=>setStatus(e.target.value)} className="filter-select"><option value="all">All shelves</option>{Object.entries(statusLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
         <select aria-label="Filter by genre" value={genre} onChange={e=>setGenre(e.target.value)} className="filter-select"><option value="all">Every genre</option>{genreOptions.map(g=><option key={g} value={g}>{g}</option>)}</select>
-        <select aria-label="Sort books" value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="filter-select"><option value="newest">Recently added</option><option value="title">Title A–Z</option><option value="rating">Highest rated</option><option value="pages">Page count</option></select>
+        <select aria-label="Sort books" value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="filter-select"><option value="newest">Newest first</option><option value="title">Title A–Z</option><option value="rating">Highest rated</option><option value="pages">Most pages first</option></select>
         {!starredView&&<button aria-pressed={starred} onClick={()=>setStarred(!starred)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11px] ${starred?'border-[#d0ae66] bg-[#f4e8c7] text-[#755c2d]':'border-[#ded7c8] text-[#758075]'}`}><Star size={13} fill={starred?'currentColor':'none'}/> Starred only</button>}
         <button disabled={exportQuery.isFetching} onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-full border border-[#ded7c8] px-3 py-2 text-[11px] text-[#526a59] hover:bg-[#eee8dc]"><Download size={13}/>{exportQuery.isFetching?'Preparing…':'Export CSV'}</button>
       </div>
     </div>
-    <label className="mb-5 flex items-center gap-2 text-xs text-[#526a59]"><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} className="accent-[#285342]"/>Show only books I own</label>
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <label className="flex items-center gap-2 text-xs text-[#526a59]"><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} className="accent-[#285342]"/>Show only books I own</label>
+      {(hasFilters||sort!=='newest')&&<button type="button" onClick={clearFilters} className="text-xs font-semibold text-[#526a59] underline underline-offset-4">Reset search, filters & sort</button>}
+    </div>
+    {query.isFetching&&!query.isLoading&&<p role="status" className="mb-3 text-xs text-[#718075]">Updating results…</p>}
     {message&&<div className="mb-4 flex items-center justify-between rounded-xl bg-[#e5ecdf] px-4 py-2.5 text-xs text-[#42634f]"><span>{message}</span><button onClick={()=>setMessage('')} aria-label="Dismiss message"><X size={14}/></button></div>}
     {query.isLoading?<SkeletonGrid/>:query.isError?<ErrorMessage retry={()=>query.refetch()}/>:query.data?.length?<><p className="mb-5 font-mono text-[9px] uppercase tracking-[.17em] text-[#869084]">{query.data.length} {query.data.length===1?'volume':'volumes'} in view</p><div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">{query.data.map(book=><BookCard key={book.id} book={book} onEdit={openEdit} onDelete={deleteBook}/>)}</div></>:<div className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-14 text-center">
       <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e2d3] text-[#62806d]">{starredView?<Star size={25}/>:<BookOpen size={25}/>}</div>
       <h2 className="mt-5 font-serif text-3xl text-[#315744]">{hasFilters?'No books match these filters.':starredView?'No starred books yet.':'The shelves are waiting.'}</h2>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#778477]">{hasFilters?'Try another search or loosen your filters.':starredView?'Tap the star on any book in your library to find it here.':'Begin with the book beside your bed, the one you finished last month, or a story you cannot wait to open.'}</p>
-      {starredView&&!hasFilters?<Link href="/books" className="mt-6 inline-flex rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] no-underline">Browse my library</Link>:<button onClick={()=>{setSearch('');setStatus('all');setGenre('all');setStarred(false);setOwnedOnly(false);if(!hasFilters){setEditing(undefined);setModal(true);}}} className="mt-6 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">{hasFilters?'Clear filters':'Add your first book'}</button>}
+      {starredView&&!hasFilters?<Link href="/books" className="mt-6 inline-flex rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] no-underline">Browse my library</Link>:<button onClick={()=>{clearFilters();if(!hasFilters){setEditing(undefined);setModal(true);}}} className="mt-6 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">{hasFilters?'Clear filters':'Add your first book'}</button>}
     </div>}
     <DeleteBookDialog book={deleting} onClose={()=>setDeleting(null)} onDeleted={()=>setMessage('Book removed from your library.')}/>
     <BookDialog open={modal} initial={editing} onClose={closeModal} onSaved={()=>setMessage(editing?'Changes saved.':'Book added to your library.')}/>

@@ -31,6 +31,7 @@ import {
 } from "@workspace/db";
 import { createLibraryBook, getLibraryBook, listLibraryBooks, toApiBook, updateLibraryBook } from "../lib/library";
 import { normalizeBookInput } from "../lib/book-validation";
+import { findLibraryBooks } from "../lib/book-search";
 
 const router: IRouter = Router();
 
@@ -94,21 +95,7 @@ router.get("/books", requireAuth, async (req, res): Promise<void> => {
 
   const userId = await resolveUserId(res.locals.clerkUserId as string);
   const starredIds = await listStarredBookIds(userId);
-  const search = parsed.data.search?.trim().toLocaleLowerCase();
-  const rows = (await listLibraryBooks(userId)).filter((book) =>
-    (!search || `${book.title} ${book.authors.join(" ")}`.toLocaleLowerCase().includes(search)) &&
-    (!parsed.data.status || book.status === parsed.data.status) &&
-    (!parsed.data.genre || book.genre === parsed.data.genre) &&
-    (parsed.data.isOwned === undefined || book.isOwned === parsed.data.isOwned) &&
-    (!parsed.data.starredOnly || starredIds.has(book.catalogBookId)),
-  );
-  const sort = parsed.data.sort ?? "newest";
-  rows.sort((a, b) => (
-    sort === "title" ? a.title.localeCompare(b.title) :
-    sort === "rating" ? (b.rating ?? -1) - (a.rating ?? -1) :
-    sort === "pages" ? (b.pages ?? -1) - (a.pages ?? -1) :
-    b.createdAt.getTime() - a.createdAt.getTime()
-  ) || a.id - b.id);
+  const rows = findLibraryBooks(await listLibraryBooks(userId), parsed.data, starredIds);
 
   res.json(ListBooksResponse.parse(rows.map((book) => toApiBook(book, starredIds))));
 });
