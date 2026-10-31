@@ -33,6 +33,7 @@ import { createLibraryBook, getLibraryBook, listLibraryBooks, toApiBook, updateL
 import { normalizeBookInput } from "../lib/book-validation";
 import { findLibraryBooks } from "../lib/book-search";
 import { computeDashboardSummary } from "../lib/dashboard-summary";
+import { pickNextLibraryBook } from "../lib/book-picker";
 
 const router: IRouter = Router();
 
@@ -127,23 +128,18 @@ router.get("/books/export", requireAuth, async (_req, res): Promise<void> => {
 });
 
 router.get("/books/next", requireAuth, async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
   const parsed = PickNextBookQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
   const userId = await resolveUserId(res.locals.clerkUserId as string);
-  const matches = (await listLibraryBooks(userId)).filter((book) =>
-    book.status === "want_to_read" &&
-    (!parsed.data.genre || book.genre === parsed.data.genre) &&
-    (!parsed.data.maxPages || (book.pages !== null && book.pages <= parsed.data.maxPages)) &&
-    (!parsed.data.moodTag || book.moodTags.includes(parsed.data.moodTag)),
-  );
-  if (matches.length === 0) {
+  const selected = pickNextLibraryBook(await listLibraryBooks(userId), parsed.data);
+  if (!selected) {
     res.json(PickNextBookResponse.parse({ book: null }));
     return;
   }
-  const selected = matches[Math.floor(Math.random() * matches.length)];
   const starredIds = await listStarredBookIds(userId);
   res.json(PickNextBookResponse.parse({ book: toApiBook(selected, starredIds) }));
 });

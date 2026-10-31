@@ -5,10 +5,10 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import {
   useCreateBook, useEnsureCurrentUser, useExportBooks, useGetBook, useGetDashboardSummary,
-  useListBooks, usePickNextBook, useSearchCatalog, useUpdateBook,
+  useListBooks, useSearchCatalog, useUpdateBook,
   getListBooksQueryKey, getGetBookQueryKey, getGetDashboardSummaryQueryKey,
-  getPickNextBookQueryKey, getSearchCatalogQueryKey, getExportBooksQueryKey,
-  type Book, type BookInput, type BookUpdate, type ListBooksParams, type PickNextBookParams,
+  getSearchCatalogQueryKey, getExportBooksQueryKey,
+  type Book, type BookInput, type BookUpdate, type ListBooksParams,
   type CatalogBook, type BookStatus,
 } from '@workspace/api-client-react';
 import {
@@ -28,6 +28,7 @@ import { bookshelfGroups, shelfStats } from '@/lib/bookshelf';
 import { BookshelfWall } from '@/components/shelf/Bookshelf';
 import { ReadingRhythmChart } from '@/components/dashboard/ReadingRhythmChart';
 import { RecordBook, longestDetail, fastestDetail } from '@/components/dashboard/RecordBooks';
+import { NextBookPicker } from '@/components/next/NextBookPicker';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -410,28 +411,7 @@ function Shelf() {
 }
 
 function NextBook() {
-  const [genre,setGenre]=useState('');const [maxPages,setMaxPages]=useState('');const [moodTag,setMoodTag]=useState('');const [pick,setPick]=useState(false);
-  const params=useMemo<PickNextBookParams>(()=>({genre:genre||undefined,maxPages:maxPages?Number(maxPages):undefined,moodTag:moodTag||undefined}),[genre,maxPages,moodTag]);
-  const selection=usePickNextBook(params,{query:{queryKey:getPickNextBookQueryKey(params),enabled:pick}});
-  const book=selection.data?.book;
-  const list=useListBooks({}, {query:{queryKey:getListBooksQueryKey()}});
-  const genreOptions=Array.from(new Set((list.data||[]).filter(b=>b.status==='want_to_read').map(b=>b.genre).filter(Boolean) as string[])).sort();
-  const moods=Array.from(new Set((list.data||[]).filter(b=>b.status==='want_to_read').flatMap(b=>b.moodTags||[]))).sort();
-  const choose=()=>{setPick(true);selection.refetch();};
-  return <AppShell section="/next"><PageTitle eyebrow="The open question" title="What shall I read?" sub="Let the unread shelf surprise you, or give fate a few gentle boundaries."/>
-    <div className="grid gap-7 xl:grid-cols-[.85fr_1.15fr]">
-      <section className="relative overflow-hidden rounded-[26px] bg-[#294f3e] p-6 text-[#f4efdf] md:p-9"><div className="absolute -right-10 -top-8 h-52 w-52 rounded-full border border-[#e3ca8c30]"/><div className="absolute -right-4 -top-2 h-36 w-36 rounded-full border border-[#e3ca8c30]"/><p className="relative font-mono text-[9px] uppercase tracking-[.2em] text-[#d4bd83]">A considered surprise</p><h2 className="relative mt-3 max-w-sm font-serif text-4xl leading-tight">Make room for a story.</h2><p className="relative mt-3 max-w-sm text-sm leading-6 text-[#c6d1c5]">Choose a mood, set a page limit, or leave the decision entirely to chance.</p>
-        <div className="relative mt-8 space-y-5"><label className="block"><span className="mb-2 block font-mono text-[9px] uppercase tracking-[.15em] text-[#c0cfbf]">Genre, if you like</span><select value={genre} onChange={e=>setGenre(e.target.value)} className="w-full rounded-xl border border-white/20 bg-[#1e4435] px-3 py-3 text-sm text-[#f4efdf] outline-none"><option value="">Surprise me</option>{genreOptions.map(g=><option key={g} value={g}>{g}</option>)}</select></label>
-          <label className="block"><span className="mb-2 block font-mono text-[9px] uppercase tracking-[.15em] text-[#c0cfbf]">A comfortable page count</span><input type="number" min="1" value={maxPages} onChange={e=>setMaxPages(e.target.value)} placeholder="Any length" className="w-full rounded-xl border border-white/20 bg-[#1e4435] px-3 py-3 text-sm text-[#f4efdf] outline-none placeholder:text-[#afc0b2]"/></label>
-          <label className="block"><span className="mb-2 block font-mono text-[9px] uppercase tracking-[.15em] text-[#c0cfbf]">A mood to match</span><select value={moodTag} onChange={e=>setMoodTag(e.target.value)} className="w-full rounded-xl border border-white/20 bg-[#1e4435] px-3 py-3 text-sm text-[#f4efdf] outline-none"><option value="">Any feeling</option>{moods.map(m=><option key={m} value={m}>{m}</option>)}</select></label>
-          <button onClick={choose} disabled={selection.isFetching} className="mt-1 inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#e0c77f] px-5 py-3.5 text-sm font-semibold text-[#294b39] transition hover:-translate-y-0.5 hover:bg-[#ead696] disabled:opacity-60"><Sparkles size={16}/>{selection.isFetching?'Turning the pages…':'Choose my next book'}</button>
-        </div>
-      </section>
-      <section className="flex min-h-[430px] items-center justify-center rounded-[26px] border border-[#ded7c8] bg-[#faf8f1] p-6 md:p-10">
-        {selection.isLoading?<div className="flex w-full animate-pulse gap-6"><div className="aspect-[.68] w-40 rounded bg-[#e2ddcf]"/><div className="h-40 flex-1 rounded bg-[#e2ddcf]"/></div>:selection.isError?<div className="text-center"><CircleHelp size={25} className="mx-auto text-[#b8755b]"/><h3 className="mt-4 font-serif text-3xl">The shelves are quiet.</h3><p className="mt-2 text-sm text-[#718075]">We couldn't find a pick just now.</p><button onClick={()=>selection.refetch()} className="mt-5 rounded-full bg-[#285342] px-5 py-2.5 text-xs text-white">Try again</button></div>:book?<div className="grid w-full items-center gap-7 sm:grid-cols-[minmax(140px,210px)_1fr]"><Cover book={book} className="mx-auto aspect-[.68] w-full max-w-[210px] rounded-lg shadow-[8px_14px_30px_rgba(45,39,27,.2)]"/><div><p className="font-mono text-[9px] uppercase tracking-[.19em] text-[#a17d50]">Your next chapter</p><h3 className="mt-3 font-serif text-4xl leading-[.95] text-[#274b3b]">{book.title}</h3><p className="mt-3 font-serif text-xl text-[#788477]">{book.author}</p><div className="mt-5 flex flex-wrap gap-2">{book.genre&&<span className="rounded-full bg-[#e8e1d3] px-3 py-1.5 text-[10px] text-[#526a59]">{book.genre}</span>}{book.pages&&<span className="rounded-full bg-[#e8e1d3] px-3 py-1.5 text-[10px] text-[#526a59]">{book.pages} pages</span>}{book.moodTags?.map(m=><span key={m} className="rounded-full bg-[#e8e1d3] px-3 py-1.5 text-[10px] text-[#526a59]">{m}</span>)}</div><Link href={`/books/${book.id}`} className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#faf8f1] no-underline">Read the book record <ArrowRight size={14}/></Link><button onClick={choose} className="mt-4 block text-xs text-[#758477]">Pick another</button></div></div>:pick?<div className="text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#f2e5d2] text-[#b8755b]"><Compass size={23}/></div><h3 className="mt-5 font-serif text-3xl">No match on this shelf.</h3><p className="mt-2 max-w-sm text-sm leading-6 text-[#718075]">Try relaxing one of your filters, or add a few more books to your Want to read shelf.</p><button onClick={()=>{setGenre('');setMaxPages('');setMoodTag('');setPick(false);}} className="mt-5 rounded-full border border-[#d8d2c4] px-5 py-2.5 text-xs font-semibold text-[#526a59]">Clear filters</button></div>:<div className="max-w-sm text-center"><span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#e9e2d3] text-[#62806d]"><BookOpen size={26}/></span><p className="mt-5 font-mono text-[9px] uppercase tracking-[.2em] text-[#a17d50]">A little serendipity</p><h3 className="mt-2 font-serif text-3xl">The right book is in there.</h3><p className="mt-3 text-sm leading-6 text-[#718075]">When you're ready, draw one title from your Want to read shelf. The result will appear here.</p></div>}
-      </section>
-    </div>
-  </AppShell>;
+  return <AppShell section="/next"><PageTitle eyebrow="The open question" title="What shall I read?" sub="Draw one book at random from your Want to read shelf, within whatever boundaries you set."/><NextBookPicker/></AppShell>;
 }
 
 function SignInPage() { return <div className="library-paper flex min-h-[100dvh] items-center justify-center bg-[#f1eddf] px-4 py-10"><div className="absolute left-8 top-7"><Link href="/" className="flex items-center gap-2 font-serif text-xl text-[#234b39] no-underline"><BookOpen size={20}/> Marginalia</Link></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`}/></div>; }
