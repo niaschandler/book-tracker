@@ -117,6 +117,10 @@ paths:
           name: genre
           schema: { type: string }
         - in: query
+          name: excludeGenre
+          description: Exclude this genre to explore a different part of your want-to-read list
+          schema: { type: string }
+        - in: query
           name: maxPages
           schema: { type: integer, minimum: 1 }
         - in: query

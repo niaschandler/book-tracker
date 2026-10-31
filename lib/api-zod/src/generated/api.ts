@@ -177,6 +177,7 @@ export const ExportBooksResponse = zod.array(ExportBooksResponseItem)
 
 export const PickNextBookQueryParams = zod.object({
   "genre": zod.coerce.string().optional(),
+  "excludeGenre": zod.coerce.string().optional().describe('Exclude this genre to explore a different part of your want-to-read list'),
   "maxPages": zod.coerce.number().int().min(1).optional(),
   "moodTag": zod.coerce.string().optional()
 })

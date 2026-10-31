@@ -294,6 +294,10 @@ export const ListBooksSort = {
 export type PickNextBookParams = {
 genre?: string;
 /**
+ * Exclude this genre to explore a different part of your want-to-read list
+ */
+excludeGenre?: string;
+/**
  * @minimum 1
  */
 maxPages?: number;
