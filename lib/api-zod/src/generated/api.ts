@@ -149,22 +149,90 @@ export const CreateBookResponse = zod.object({
 
 
 /**
+ * @summary Validate mapped spreadsheet rows without writing anything
+ */
+export const previewLibraryImportBodyRowsItemRowMin = 2;
+
+export const previewLibraryImportBodyRowsMax = 2000;
+
+
+
+export const PreviewLibraryImportBody = zod.object({
+  "rows": zod.array(zod.object({
+  "row": zod.number().int().min(previewLibraryImportBodyRowsItemRowMin),
+  "values": zod.record(zod.string(), zod.string())
+})).min(1).max(previewLibraryImportBodyRowsMax)
+})
+
+export const PreviewLibraryImportResponse = zod.object({
+  "rows": zod.array(zod.object({
+  "row": zod.number().int(),
+  "title": zod.string(),
+  "disposition": zod.enum(['ready', 'invalid', 'duplicate']),
+  "problems": zod.array(zod.string())
+})),
+  "ready": zod.number().int(),
+  "invalid": zod.number().int(),
+  "duplicates": zod.number().int(),
+  "previewToken": zod.string()
+})
+
+
+/**
+ * @summary Atomically add valid new rows after reviewing a preview
+ */
+export const confirmLibraryImportBodyRowsItemRowMin = 2;
+
+export const confirmLibraryImportBodyRowsMax = 2000;
+
+export const confirmLibraryImportBodyPreviewTokenMin = 64;
+export const confirmLibraryImportBodyPreviewTokenMax = 64;
+
+
+
+export const ConfirmLibraryImportBody = zod.object({
+  "rows": zod.array(zod.object({
+  "row": zod.number().int().min(confirmLibraryImportBodyRowsItemRowMin),
+  "values": zod.record(zod.string(), zod.string())
+})).min(1).max(confirmLibraryImportBodyRowsMax),
+  "previewToken": zod.string().min(confirmLibraryImportBodyPreviewTokenMin).max(confirmLibraryImportBodyPreviewTokenMax)
+})
+
+export const ConfirmLibraryImportResponse = zod.object({
+  "imported": zod.number().int(),
+  "skipped": zod.number().int()
+})
+
+
+/**
  * @summary Export the signed-in user's books
  */
+export const exportBooksResponseRatingMax = 5;
+
+
+
 export const ExportBooksResponseItem = zod.object({
+  "id": zod.number().int(),
   "title": zod.string(),
   "author": zod.string(),
+  "authors": zod.array(zod.string()),
   "genre": zod.string().nullish(),
   "pages": zod.number().int().nullish(),
-  "rating": zod.number().int().nullish(),
+  "rating": zod.number().int().min(1).max(exportBooksResponseRatingMax).nullish(),
   "status": zod.enum(['want_to_read', 'reading', 'read']),
   "isOwned": zod.boolean(),
   "isbn": zod.string().nullish(),
   "description": zod.string().nullish(),
-  "moodTags": zod.array(zod.string()).optional(),
+  "moodTags": zod.array(zod.string()),
+  "coverUrl": zod.string().nullish(),
+  "openLibraryId": zod.string().nullish(),
+  "publishedYear": zod.number().int().nullish(),
   "notes": zod.string().nullish(),
   "startedOn": zod.string().nullish(),
-  "finishedOn": zod.string().nullish()
+  "finishedOn": zod.string().nullish(),
+  "starred": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 export const ExportBooksResponse = zod.array(ExportBooksResponseItem)
 

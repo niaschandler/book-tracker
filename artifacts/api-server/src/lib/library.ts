@@ -4,7 +4,7 @@ import {
   readingLogTable, type BookStatus,
 } from "@workspace/db";
 
-type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface LibraryInput {
   title: string;
@@ -53,8 +53,8 @@ const selection = {
   updatedAt: readingLogTable.updatedAt,
 };
 
-export async function listLibraryBooks(userId: number) {
-  return db.select(selection).from(readingLogTable)
+export async function listLibraryBooks(userId: number, executor: typeof db | Transaction = db) {
+  return executor.select(selection).from(readingLogTable)
     .innerJoin(booksTable, eq(booksTable.id, readingLogTable.bookId))
     .leftJoin(genresTable, eq(genresTable.id, booksTable.genreId))
     .where(eq(readingLogTable.userId, userId));
@@ -110,16 +110,20 @@ function personalValues(input: LibraryInput) {
 }
 
 export async function createLibraryBook(userId: number, input: LibraryInput) {
-  const id = await db.transaction(async (tx) => {
+  const id = await db.transaction((tx) => insertLibraryBook(tx, userId, input));
+  return (await getLibraryBook(userId, id))!;
+}
+
+/** Shared insertion path for atomic batch imports and ordinary manual additions. */
+export async function insertLibraryBook(tx: Transaction, userId: number, input: LibraryInput,
+  timestamps?: { createdAt?: Date; updatedAt?: Date }) {
     // No title/ISBN deduplication: editions and private manual entries must not
     // be silently combined just because their visible titles happen to match.
     const [book] = await tx.insert(booksTable).values(await catalogValues(tx, input)).returning();
     await setAuthors(tx, book.id, input.authors);
     const [log] = await tx.insert(readingLogTable)
-      .values({ userId, bookId: book.id, ...personalValues(input) }).returning();
+      .values({ userId, bookId: book.id, ...personalValues(input), ...timestamps }).returning();
     return log.id;
-  });
-  return (await getLibraryBook(userId, id))!;
 }
 
 export async function updateLibraryBook(userId: number, id: number, input: LibraryInput, catalogChanged: boolean) {

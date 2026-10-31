@@ -5,6 +5,64 @@
  * Book Tracker API
  * OpenAPI spec version: 0.1.0
  */
+export type LibraryImportRowValues = {[key: string]: string};
+
+export interface LibraryImportRow {
+  /** @minimum 2 */
+  row: number;
+  values: LibraryImportRowValues;
+}
+
+export interface LibraryImportInput {
+  /**
+     * @minItems 1
+     * @maxItems 2000
+     */
+  rows: LibraryImportRow[];
+}
+
+export interface LibraryImportConfirmation {
+  /**
+     * @minItems 1
+     * @maxItems 2000
+     */
+  rows: LibraryImportRow[];
+  /**
+     * @minLength 64
+     * @maxLength 64
+     */
+  previewToken: string;
+}
+
+export type LibraryImportRowPreviewDisposition = typeof LibraryImportRowPreviewDisposition[keyof typeof LibraryImportRowPreviewDisposition];
+
+
+export const LibraryImportRowPreviewDisposition = {
+  ready: 'ready',
+  invalid: 'invalid',
+  duplicate: 'duplicate',
+} as const;
+
+export interface LibraryImportRowPreview {
+  row: number;
+  title: string;
+  disposition: LibraryImportRowPreviewDisposition;
+  problems: string[];
+}
+
+export interface LibraryImportPreview {
+  rows: LibraryImportRowPreview[];
+  ready: number;
+  invalid: number;
+  duplicates: number;
+  previewToken: string;
+}
+
+export interface LibraryImportResult {
+  imported: number;
+  skipped: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -201,29 +259,7 @@ export interface BookUpdate {
   finishedOn?: string | null;
 }
 
-export interface BookExport {
-  title: string;
-  author: string;
-  /** @nullable */
-  genre?: string | null;
-  /** @nullable */
-  pages?: number | null;
-  /** @nullable */
-  rating?: number | null;
-  status: BookStatus;
-  isOwned: boolean;
-  /** @nullable */
-  isbn?: string | null;
-  /** @nullable */
-  description?: string | null;
-  moodTags?: string[];
-  /** @nullable */
-  notes?: string | null;
-  /** @nullable */
-  startedOn?: string | null;
-  /** @nullable */
-  finishedOn?: string | null;
-}
+export type BookExport = Book;
 
 export interface StarInput {
   starred: boolean;

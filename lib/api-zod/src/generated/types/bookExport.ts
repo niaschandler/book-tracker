@@ -5,28 +5,6 @@
  * Book Tracker API
  * OpenAPI spec version: 0.1.0
  */
-import type { BookStatus } from './bookStatus';
+import type { Book } from './book';
 
-export interface BookExport {
-  title: string;
-  author: string;
-  /** @nullable */
-  genre?: string | null;
-  /** @nullable */
-  pages?: number | null;
-  /** @nullable */
-  rating?: number | null;
-  status: BookStatus;
-  isOwned: boolean;
-  /** @nullable */
-  isbn?: string | null;
-  /** @nullable */
-  description?: string | null;
-  moodTags?: string[];
-  /** @nullable */
-  notes?: string | null;
-  /** @nullable */
-  startedOn?: string | null;
-  /** @nullable */
-  finishedOn?: string | null;
-}
+export type BookExport = Book;

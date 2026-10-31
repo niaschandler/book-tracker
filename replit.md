@@ -43,6 +43,16 @@ A personal reading library for tracking books read, owned, and wanted, with priv
 
 Users can manage a private reading library, track progress and ratings, browse their finished shelf, see reading summaries, pick a next book by genre/length/mood, and export their data.
 
+## Spreadsheet import
+
+- My library → Import spreadsheet accepts Excel `.xlsx` files, including complete Marginalia exports (and their Long text sheet).
+- Files are parsed locally, not stored. Limits: 10 MB per file, 2,000 books per import, 1,000,000 characters per notes/description field.
+- Users can change column mappings, preview row problems and duplicates, then explicitly confirm valid new rows. Invalid and duplicate rows are skipped; existing records are never overwritten.
+- Missing optional fields remain blank; unmapped status defaults to Want to read, ownership and stars to No. Original export timestamps are retained when present.
+- Source Book IDs only link Long text parts; they never grant access to local records. Duplicate checks use only the current reader’s library.
+- Preview is read-only. Confirmation revalidates, checks for a stale preview, and writes the batch and stars in one transaction.
+- Import checks: `pnpm --filter @workspace/scripts exec tsx --test ../artifacts/book-tracker/src/lib/library-import.test.ts ../artifacts/api-server/src/lib/library-import.test.ts ../artifacts/api-server/src/lib/library-import.integration.test.ts`
+
 ## User preferences
 
 - The visual direction should feel like a grand library in a prestigious university or an old public library in a big city.

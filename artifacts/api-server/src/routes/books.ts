@@ -22,6 +22,10 @@ import {
   UpdateBookParams,
   UpdateBookResponse,
   ExportBooksResponse,
+  PreviewLibraryImportBody,
+  PreviewLibraryImportResponse,
+  ConfirmLibraryImportBody,
+  ConfirmLibraryImportResponse,
 } from "@workspace/api-zod";
 import {
   db,
@@ -30,6 +34,8 @@ import {
   usersTable,
 } from "@workspace/db";
 import { createLibraryBook, getLibraryBook, listLibraryBooks, toApiBook, updateLibraryBook } from "../lib/library";
+import { previewImport } from "../lib/library-import";
+import { confirmImport, StaleImportPreview } from "../lib/library-import-commit";
 import { normalizeBookInput } from "../lib/book-validation";
 import { findLibraryBooks } from "../lib/book-search";
 import { computeDashboardSummary } from "../lib/dashboard-summary";
@@ -121,10 +127,43 @@ router.post("/books", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.get("/books/export", requireAuth, async (_req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
   const userId = await resolveUserId(res.locals.clerkUserId as string);
   const books = await listLibraryBooks(userId);
+  const starredIds = await listStarredBookIds(userId);
   books.sort((a, b) => a.title.localeCompare(b.title));
-  res.json(ExportBooksResponse.parse(books.map((book) => toApiBook(book, new Set()))));
+  res.json(ExportBooksResponse.parse(books.map((book) => toApiBook(book, starredIds))));
+});
+
+router.post("/books/import/preview", requireAuth, async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const parsed = PreviewLibraryImportBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  // SELECT only: even local account creation is deferred until confirmation.
+  const owner = res.locals.clerkUserId as string;
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkUserId, owner));
+  const books = user ? await listLibraryBooks(user.id) : [];
+  res.json(PreviewLibraryImportResponse.parse(previewImport(parsed.data.rows, books, owner).preview));
+});
+
+router.post("/books/import/confirm", requireAuth, async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store");
+  const parsed = ConfirmLibraryImportBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const owner = res.locals.clerkUserId as string;
+  try {
+    const result = await confirmImport(owner, parsed.data);
+    res.json(ConfirmLibraryImportResponse.parse(result));
+  } catch (error) {
+    if (!(error instanceof StaleImportPreview)) throw error;
+    res.status(409).json({ error: error.message });
+  }
 });
 
 router.get("/books/next", requireAuth, async (req, res): Promise<void> => {
