@@ -98,6 +98,15 @@ test("private library CRUD, normalized relations, constraints, and shared-metada
     }).returning();
     await assert.rejects(db.insert(readingLogTable).values({ userId: b.id, bookId: created.catalogBookId }));
     await db.insert(starsTable).values(userIds.map((userId) => ({ userId, bookId: created.catalogBookId })));
+    // One shared junction table: repeated starring is idempotent, and
+    // unstarring by one reader never removes another reader's star.
+    await db.insert(starsTable).values({ userId: a.id, bookId: created.catalogBookId }).onConflictDoNothing();
+    assert.equal((await db.select().from(starsTable).where(eq(starsTable.userId, a.id))).length, 1);
+    await db.delete(starsTable).where(and(eq(starsTable.userId, a.id), eq(starsTable.bookId, created.catalogBookId)));
+    assert.equal((await db.select().from(starsTable).where(eq(starsTable.userId, a.id))).length, 0);
+    assert.equal((await db.select().from(starsTable).where(eq(starsTable.userId, b.id))).length, 1);
+    assert.ok(await getLibraryBook(a.id, created.id), "Unstarring must not delete the library entry");
+    await db.insert(starsTable).values({ userId: a.id, bookId: created.catalogBookId });
     await assert.rejects(db.update(booksTable).set({ pages: 0 }).where(eq(booksTable.id, created.catalogBookId)));
     await assert.rejects(db.update(readingLogTable).set({ rating: 6 }).where(eq(readingLogTable.id, created.id)));
     await assert.rejects(db.update(readingLogTable).set({ finishedOn: "2025-01-01" }).where(eq(readingLogTable.id, created.id)));
