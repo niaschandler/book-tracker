@@ -24,8 +24,8 @@ export function StarBookButton({ book, compact = false }: { book: Book; compact?
       data-testid={`button-star-${book.id}`}
       onClick={() => mutation.mutate({ id: book.id, data: { starred: !book.starred } })}
       className={compact
-        ? `absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full backdrop-blur-sm transition disabled:opacity-50 ${book.starred ? "bg-[#f3d997] text-[#73552d]" : "bg-[#faf8f1dd] text-[#758075] md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"}`
-        : "rounded-full border border-[#d8d2c4] px-4 py-2 text-xs text-[#526a59] disabled:opacity-50"}
+        ? `absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full backdrop-blur-sm transition disabled:opacity-50 ${book.starred ? "bg-[#f3d997] text-[#73552d]" : "bg-[#f8f0dedd] text-[#758075] md:opacity-0 md:group-hover:opacity-100 focus:opacity-100"}`
+        : "rounded-full border border-[#d8d2c4] px-4 py-2 text-xs text-[#5e4232] disabled:opacity-50"}
     >
       <Star size={compact ? 15 : 14} className={compact ? "" : "mr-1 inline"} fill={book.starred ? "currentColor" : "none"} />
       {!compact && (mutation.isPending ? "Saving…" : book.starred ? "Starred" : "Star book")}

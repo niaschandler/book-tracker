@@ -483,3 +483,34 @@
     inset: -1px;
   }
 }
+.wood-panel {
+  background: linear-gradient(180deg, rgba(20,9,4,.55), rgba(20,9,4,.9)); background-size: cover; background-position: center; background-color: #2a140b;
+  color: #f4e6c8;
+  box-shadow: inset -1px 0 0 rgba(226,195,121,.25);
+}
+.parchment { background: radial-gradient(ellipse at 85% 0%, rgba(214,170,96,.22), transparent 45%), #efe4cf; }
+.parchment > header { background: rgba(43,21,11,.94) !important; border-color: rgba(226,195,121,.25) !important; color: #f4e6c8; }
+.parchment > header button { color: #f2d58e; }
+.home-hero { position: relative; background-size: cover; background-position: center 40%; }
+.home-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(22,10,4,.92) 0%, rgba(22,10,4,.7) 50%, rgba(22,10,4,.35) 100%), linear-gradient(0deg, rgba(22,10,4,.7), transparent 40%); }
+.auth-library { background-size: cover; background-position: center; }
+:root {
+  --background: 39 50% 87%;
+  --foreground: 23 39% 13%;
+  --card: 42 65% 95%;
+  --card-foreground: 23 39% 13%;
+  --border: 39 38% 70%;
+  --popover: 42 65% 95%;
+  --popover-foreground: 23 39% 13%;
+  --primary: 141 33% 26%;
+  --primary-foreground: 42 65% 95%;
+  --muted: 39 36% 85%;
+  --muted-foreground: 26 20% 38%;
+  --input: 36 28% 60%;
+  --ring: 38 48% 48%;
+}
+.form-input { background: #fcf6e8; color: #2e1d14; }
+.form-input::placeholder { color: #827463; }
+.form-input:focus { border-color: #8c703b; box-shadow: 0 0 0 3px rgba(140,112,59,.16); }
+.filter-select { background: #f8f0de; color: #594536; border-color: #c6af86; }
+:where(a, button, input, select, textarea):focus-visible { outline: 2px solid #b88c43; outline-offset: 3px; }

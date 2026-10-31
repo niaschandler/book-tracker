@@ -54,11 +54,11 @@ export function ExportLibraryButton() {
   return <div className="flex max-w-sm flex-col gap-1.5">
     <button type="button" data-testid="button-export-library" disabled={busy}
       aria-busy={busy} aria-describedby={helpId} onClick={download}
-      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#ded7c8] px-3 py-2 text-[11px] text-[#526a59] hover:bg-[#eee8dc] disabled:opacity-60">
+      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#d6c29c] px-3 py-2 text-[11px] text-[#5e4232] hover:bg-[#eee8dc] disabled:opacity-60">
       <Download size={13} aria-hidden="true"/>{busy ? 'Preparing spreadsheet…' : 'Export spreadsheet'}
     </button>
-    <span id={helpId} className="text-[10px] text-[#718075]">Excel (.xlsx) · All your books, regardless of filters</span>
+    <span id={helpId} className="text-[10px] text-[#76604f]">Excel (.xlsx) · All your books, regardless of filters</span>
     {notice && <p data-testid={failed ? 'error-export-library' : 'status-export-library'}
-      role={failed ? 'alert' : 'status'} className={`text-[11px] leading-5 ${failed ? 'text-[#a44e37]' : 'text-[#526a59]'}`}>{notice}</p>}
+      role={failed ? 'alert' : 'status'} className={`text-[11px] leading-5 ${failed ? 'text-[#a44e37]' : 'text-[#5e4232]'}`}>{notice}</p>}
   </div>;
 }
