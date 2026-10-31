@@ -4,16 +4,16 @@ import { ClerkProvider, SignIn, SignUp, Show, useAuth, useClerk, useUser } from 
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import {
-  useCreateBook, useEnsureCurrentUser, useExportBooks, useGetBook, useGetDashboardSummary,
+  useCreateBook, useEnsureCurrentUser, useGetBook, useGetDashboardSummary,
   useListBooks, useSearchCatalog, useUpdateBook,
   getListBooksQueryKey, getGetBookQueryKey, getGetDashboardSummaryQueryKey,
-  getSearchCatalogQueryKey, getExportBooksQueryKey,
+  getSearchCatalogQueryKey,
   type Book, type BookInput, type BookUpdate, type ListBooksParams,
   type CatalogBook, type BookStatus,
 } from '@workspace/api-client-react';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Bookmark, Check,
-  CircleHelp, Compass, Download, Library, LogOut,
+  CircleHelp, Compass, Library, LogOut,
   Menu, Plus, Search, SlidersHorizontal, Sparkles, Star, Trash2, X,
 } from 'lucide-react';
 import { Link, Redirect, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
@@ -21,6 +21,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DeleteBookDialog } from '@/components/DeleteBookDialog';
 import { StarBookButton } from '@/components/StarBookButton';
+import { ExportLibraryButton } from '@/components/ExportLibraryButton';
+import { ImportLibraryButton } from '@/components/ImportLibraryButton';
 import { refreshLibrary } from '@/lib/library-cache';
 import { requiredBookErrors } from '@/lib/book-form-validation';
 import { namedGenreCount } from '@/lib/dashboard-chart';
@@ -327,14 +329,12 @@ function BooksPage({starredView=false}:{starredView?:boolean}) {
   useEffect(()=>{document.title=starredView?'Starred books | Marginalia':'My library | Marginalia';},[starredView]);
   const query=useListBooks(params,{query:{queryKey:getListBooksQueryKey(params)}});
   const library=useListBooks(undefined,{query:{queryKey:getListBooksQueryKey()}});
-  const exportQuery=useExportBooks({query:{queryKey:getExportBooksQueryKey(),enabled:false}});
   const genreOptions=useMemo(()=>Array.from(new Set([...(library.data||[]).map(b=>b.genre),...(genre!=='all'?[genre]:[])].filter(Boolean) as string[])).sort(),[library.data,genre]);
   const hasFilters=Boolean(search.trim()||starred||ownedOnly||status!=='all'||genre!=='all');
   const clearFilters=()=>{setSearch('');setStatus('all');setGenre('all');setStarred(false);setOwnedOnly(false);setSort('newest');};
   const openEdit=(b:Book)=>{setEditing(b);setModal(true);};
   const closeModal=()=>{setModal(false);setEditing(undefined);};
   const deleteBook=(b:Book)=>setDeleting(b);
-  const exportCsv=async()=>{const result=await exportQuery.refetch();if(result.data){const fields=Object.keys(result.data[0]||{title:'',author:'',genre:'',pages:'',rating:'',status:'',isOwned:'',isbn:'',description:'',moodTags:'',notes:'',startedOn:'',finishedOn:''});const esc=(v:unknown)=>`"${String(Array.isArray(v)?v.join('|'):v??'').replaceAll('"','""')}"`;const csv=[fields.join(','),...result.data.map(row=>fields.map(k=>esc((row as unknown as Record<string,unknown>)[k])).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='marginalia-library.csv';a.click();URL.revokeObjectURL(url);setMessage('Your library export is ready.');}};
   return <AppShell section={starredView?'/starred':'/books'}><PageTitle eyebrow={starredView?'Your favorites':'The catalog'} title={starredView?'Starred books.':'My library.'} sub={starredView?'Books you have starred, kept together in one private view. Unstar a book to remove it from this view, not your library.':'Every volume has a place. Search your shelves, sort the story, or add something new.'} action={<button onClick={()=>{setEditing(undefined);setModal(true);}} className="inline-flex items-center gap-2 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] hover:bg-[#1f4536]"><Plus size={16}/> Add a book</button>}/>
     <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#ded7c8] bg-[#faf8f1] p-3 md:flex-row md:items-center">
       <div className="relative min-w-[210px] flex-1"><Search size={16} className="absolute left-3 top-3 text-[#829084]"/><input aria-label="Search books" data-testid="input-book-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title or author…" className="form-input !border-0 !bg-transparent !pl-9"/></div>
@@ -343,7 +343,8 @@ function BooksPage({starredView=false}:{starredView?:boolean}) {
         <select aria-label="Filter by genre" value={genre} onChange={e=>setGenre(e.target.value)} className="filter-select"><option value="all">Every genre</option>{genreOptions.map(g=><option key={g} value={g}>{g}</option>)}</select>
         <select aria-label="Sort books" value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="filter-select"><option value="newest">Newest first</option><option value="title">Title A–Z</option><option value="rating">Highest rated</option><option value="pages">Most pages first</option></select>
         {!starredView&&<button aria-pressed={starred} onClick={()=>setStarred(!starred)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11px] ${starred?'border-[#d0ae66] bg-[#f4e8c7] text-[#755c2d]':'border-[#ded7c8] text-[#758075]'}`}><Star size={13} fill={starred?'currentColor':'none'}/> Starred only</button>}
-        <button disabled={exportQuery.isFetching} onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-full border border-[#ded7c8] px-3 py-2 text-[11px] text-[#526a59] hover:bg-[#eee8dc]"><Download size={13}/>{exportQuery.isFetching?'Preparing…':'Export CSV'}</button>
+        <ExportLibraryButton/>
+        <ImportLibraryButton/>
       </div>
     </div>
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">

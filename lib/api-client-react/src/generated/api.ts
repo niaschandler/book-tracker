@@ -26,13 +26,16 @@ import type {
 
 import type {
   Book,
-  BookExport,
   BookInput,
   BookUpdate,
   CatalogBook,
   CurrentUserResponse,
   DashboardSummary,
   HealthStatus,
+  LibraryImportConfirmation,
+  LibraryImportInput,
+  LibraryImportPreview,
+  LibraryImportResult,
   ListBooksParams,
   PickNextBookParams,
   PickResponse,
@@ -440,6 +443,182 @@ export const useCreateBook = <TError = ErrorType<unknown>,
       return useMutation(getCreateBookMutationOptions(options), queryClient);
     }
 
+export const getPreviewLibraryImportUrl = () => {
+
+
+
+
+  return `/api/books/import/preview`
+}
+
+/**
+ * @summary Validate mapped spreadsheet rows without writing anything
+ */
+export const previewLibraryImport = async (libraryImportInput: LibraryImportInput, options?: Parameters<typeof customFetch>[1]): Promise<LibraryImportPreview> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LibraryImportPreview>(getPreviewLibraryImportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(libraryImportInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewLibraryImportMutationKey = () => ['previewLibraryImport'] as const;
+
+export const getPreviewLibraryImportMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewLibraryImport>>, TError,PreviewLibraryImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewLibraryImport>>, TError,PreviewLibraryImportMutationVariables, TContext> => {
+
+const mutationKey = getPreviewLibraryImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewLibraryImport>>, PreviewLibraryImportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewLibraryImport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewLibraryImportMutationResult = NonNullable<Awaited<ReturnType<typeof previewLibraryImport>>>
+    export type PreviewLibraryImportMutationBody = BodyType<LibraryImportInput>
+    export type PreviewLibraryImportMutationError = ErrorType<unknown>
+    export type PreviewLibraryImportMutationVariables = {data: BodyType<LibraryImportInput>}
+
+    /**
+ * @summary Validate mapped spreadsheet rows without writing anything
+ */
+export const usePreviewLibraryImport = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewLibraryImport>>, TError,PreviewLibraryImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof previewLibraryImport>>,
+        TError,
+        PreviewLibraryImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPreviewLibraryImportMutationOptions(options), queryClient);
+    }
+
+export const getConfirmLibraryImportUrl = () => {
+
+
+
+
+  return `/api/books/import/confirm`
+}
+
+/**
+ * @summary Atomically add valid new rows after reviewing a preview
+ */
+export const confirmLibraryImport = async (libraryImportConfirmation: LibraryImportConfirmation, options?: Parameters<typeof customFetch>[1]): Promise<LibraryImportResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<LibraryImportResult>(getConfirmLibraryImportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(libraryImportConfirmation)
+  }
+);}
+
+
+
+
+
+export const getConfirmLibraryImportMutationKey = () => ['confirmLibraryImport'] as const;
+
+export const getConfirmLibraryImportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmLibraryImport>>, TError,ConfirmLibraryImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmLibraryImport>>, TError,ConfirmLibraryImportMutationVariables, TContext> => {
+
+const mutationKey = getConfirmLibraryImportMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmLibraryImport>>, ConfirmLibraryImportMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmLibraryImport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmLibraryImportMutationResult = NonNullable<Awaited<ReturnType<typeof confirmLibraryImport>>>
+    export type ConfirmLibraryImportMutationBody = BodyType<LibraryImportConfirmation>
+    export type ConfirmLibraryImportMutationError = ErrorType<void>
+    export type ConfirmLibraryImportMutationVariables = {data: BodyType<LibraryImportConfirmation>}
+
+    /**
+ * @summary Atomically add valid new rows after reviewing a preview
+ */
+export const useConfirmLibraryImport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmLibraryImport>>, TError,ConfirmLibraryImportMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmLibraryImport>>,
+        TError,
+        ConfirmLibraryImportMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmLibraryImportMutationOptions(options), queryClient);
+    }
+
 export const getExportBooksUrl = () => {
 
 
@@ -451,9 +630,9 @@ export const getExportBooksUrl = () => {
 /**
  * @summary Export the signed-in user's books
  */
-export const exportBooks = async ( options?: Parameters<typeof customFetch>[1]): Promise<BookExport[]> => {
+export const exportBooks = async ( options?: Parameters<typeof customFetch>[1]): Promise<Book[]> => {
 
-  return customFetch<BookExport[]>(getExportBooksUrl(),
+  return customFetch<Book[]>(getExportBooksUrl(),
   {
     ...options,
     method: 'GET'

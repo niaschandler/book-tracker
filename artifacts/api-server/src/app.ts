@@ -34,6 +34,8 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({ credentials: true, origin: true }));
+// Spreadsheet rows are parsed in the browser; no uploaded files are persisted.
+app.use("/api/books/import", express.json({ limit: "10mb" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
