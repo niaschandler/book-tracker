@@ -32,6 +32,7 @@ import {
 import { createLibraryBook, getLibraryBook, listLibraryBooks, toApiBook, updateLibraryBook } from "../lib/library";
 import { normalizeBookInput } from "../lib/book-validation";
 import { findLibraryBooks } from "../lib/book-search";
+import { computeDashboardSummary } from "../lib/dashboard-summary";
 
 const router: IRouter = Router();
 
@@ -266,57 +267,8 @@ router.put("/books/:id/star", requireAuth, async (req, res): Promise<void> => {
 router.get("/dashboard/summary", requireAuth, async (_req, res): Promise<void> => {
   const userId = await resolveUserId(res.locals.clerkUserId as string);
   const rows = await listLibraryBooks(userId);
-  const readBooks = rows.filter((book) => book.status === "read");
-  const rated = readBooks.filter((book) => book.rating !== null);
-  const totalPagesRead = readBooks.reduce((sum, book) => sum + (book.pages ?? 0), 0);
-  const genreCounts = new Map<string, number>();
-  for (const book of readBooks) {
-    if (book.genre) genreCounts.set(book.genre, (genreCounts.get(book.genre) ?? 0) + 1);
-  }
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const datedReads = readBooks
-    .filter((book) => book.startedOn && book.finishedOn)
-    .map((book) => ({
-      book,
-      days: Math.max(
-        0,
-        Math.ceil(
-          (new Date(`${book.finishedOn}T00:00:00Z`).getTime() -
-            new Date(`${book.startedOn}T00:00:00Z`).getTime()) /
-            86_400_000,
-        ),
-      ),
-    }))
-    .sort((a, b) => a.days - b.days);
-  const longestReadBook = readBooks
-    .filter((book) => book.pages !== null)
-    .sort((a, b) => (b.pages ?? 0) - (a.pages ?? 0))[0];
   const starredIds = await listStarredBookIds(userId);
-  const summary = {
-    totalBooks: rows.length,
-    readCount: readBooks.length,
-    ownedCount: rows.filter((book) => book.isOwned).length,
-    wantToReadCount: rows.filter((book) => book.status === "want_to_read").length,
-    totalPagesRead,
-    averageRating:
-      rated.length > 0
-        ? rated.reduce((sum, book) => sum + (book.rating ?? 0), 0) / rated.length
-        : null,
-    genreBreakdown: [...genreCounts.entries()]
-      .map(([genre, count]) => ({ genre, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8),
-    longestReadBook: longestReadBook
-      ? toApiBook(longestReadBook, starredIds)
-      : null,
-    fastestReadBook: datedReads[0]
-      ? toApiBook(datedReads[0].book, starredIds)
-      : null,
-    fastestReadingDays: datedReads[0]?.days ?? null,
-    monthlyReadCount: readBooks.filter(
-      (book) => book.finishedOn?.startsWith(currentMonth),
-    ).length,
-  };
+  const summary = computeDashboardSummary(rows, starredIds);
   res.json(GetDashboardSummaryResponse.parse(summary));
 });
 

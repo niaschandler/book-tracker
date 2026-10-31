@@ -13,7 +13,7 @@ import {
 } from '@workspace/api-client-react';
 import {
   ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Bookmark, Check,
-  CircleHelp, Compass, Download, Feather, Library, LogOut,
+  CircleHelp, Compass, Download, Library, LogOut,
   Menu, Plus, Search, SlidersHorizontal, Sparkles, Star, Trash2, X,
 } from 'lucide-react';
 import { Link, Redirect, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
@@ -23,6 +23,9 @@ import { DeleteBookDialog } from '@/components/DeleteBookDialog';
 import { StarBookButton } from '@/components/StarBookButton';
 import { refreshLibrary } from '@/lib/library-cache';
 import { requiredBookErrors } from '@/lib/book-form-validation';
+import { namedGenreCount } from '@/lib/dashboard-chart';
+import { ReadingRhythmChart } from '@/components/dashboard/ReadingRhythmChart';
+import { RecordBook, longestDetail, fastestDetail } from '@/components/dashboard/RecordBooks';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -204,27 +207,33 @@ function SkeletonGrid() { return <div className="grid grid-cols-2 gap-4 sm:grid-
 
 function Dashboard() {
   const summary = useGetDashboardSummary({ query: { queryKey: getGetDashboardSummaryQueryKey() } });
-  const books = useListBooks({ sort: 'newest' }, { query: { queryKey: getListBooksQueryKey({sort:'newest'}) } });
+  const books = useListBooks(undefined, { query: { queryKey: getListBooksQueryKey() } });
   const data = summary.data;
+  const recent = useMemo(() => [...(books.data ?? [])].sort((x, y) => Date.parse(y.createdAt) - Date.parse(x.createdAt)).slice(0, 5), [books.data]);
+  const genres = data?.genreBreakdown ?? [];
+  const maxGenre = genres.reduce((m, g) => Math.max(m, g.count), 0);
+  const named = namedGenreCount(genres);
+  const avg = data?.averageRating != null && Number.isFinite(data.averageRating) ? `${data.averageRating.toFixed(1)} / 5` : '—';
+  const recordCover = (b: Book) => <Cover book={b} className="h-[105px] w-[72px] shrink-0 rounded-md shadow-md"/>;
   return <AppShell section="/dashboard"><PageTitle eyebrow="Welcome to your reading room" title="A life in books." sub="A small portrait of what you've read, what you own, and what is waiting."/>
-    {summary.isLoading ? <div className="grid animate-pulse grid-cols-2 gap-4 lg:grid-cols-4">{[1,2,3,4].map(i=><div key={i} className="h-32 rounded-2xl bg-[#e2ddcf]"/>)}</div> : summary.isError ? <ErrorMessage retry={()=>summary.refetch()}/> : <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Stat label="In your library" value={data?.totalBooks ?? 0} note="A growing collection"/><Stat label="Read & remembered" value={data?.readCount ?? 0} note={`${(data?.totalPagesRead ?? 0).toLocaleString()} pages turned`} color="sage"/><Stat label="Still to discover" value={data?.wantToReadCount ?? 0} note="Your future reading" color="rust"/><Stat label="Average rating" value={data?.averageRating ? `${data.averageRating.toFixed(1)} / 5` : '—'} note="From your finished books"/></div>
+    {summary.isLoading ? <div className="grid animate-pulse grid-cols-2 gap-4 lg:grid-cols-5">{[1,2,3,4,5].map(i=><div key={i} className="h-32 rounded-2xl bg-[#e2ddcf]"/>)}</div> : summary.isError || !data ? <ErrorMessage retry={()=>summary.refetch()}/> : <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5"><Stat label="In your library" value={data.totalBooks} note={`${data.wantToReadCount} waiting to be read`}/><Stat label="Finished" value={data.readCount} note={data.readCount === 1 ? 'Book read and remembered' : 'Books read and remembered'} color="sage"/><Stat label="Pages read" value={data.totalPagesRead.toLocaleString()} note="Across finished books" color="rust"/><Stat label="Genres" value={named} note={named === 1 ? 'Named genre finished' : 'Named genres finished'} color="sage"/><Stat label="Average rating" value={avg} note={avg === '—' ? 'No rated finished books yet' : 'Rated finished books'}/></div>
       <div className="mt-7 grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
-        <section className="rounded-2xl border border-[#ded7c8] bg-[#faf8f1] p-6 md:p-8"><div className="mb-6 flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#a17d50]">A chapter at a time</p><h2 className="mt-2 font-serif text-3xl">Your reading rhythm</h2></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#e8e0cf] text-[#42634f]"><Feather size={19}/></span></div>
-          <div className="flex h-40 items-end gap-3 border-b border-[#ded8ca] pb-3">{Array.from({length:8},(_,i)=>{const n=data?.monthlyReadCount ? Math.max(8, Math.min(100, ((i+1)*13 + data.monthlyReadCount*7)%86)) : 8;return <div key={i} className="flex flex-1 flex-col items-center gap-2"><div className="flex h-[125px] w-full items-end"><div style={{height:`${n}%`}} className={`w-full rounded-t-[4px] transition-all ${i===7?'bg-[#b8755b]':'bg-[#71917e]'}`}/></div><span className="font-mono text-[8px] uppercase text-[#8a9487]">{['J','F','M','A','M','J','J','A'][i]}</span></div>})}</div>
-          <p className="mt-4 text-xs text-[#718075]"><strong className="font-semibold text-[#315744]">{data?.monthlyReadCount ?? 0} books</strong> finished this month. Each one leaves a mark.</p>
-        </section>
-        <section className="rounded-2xl bg-[#284d3d] p-6 text-[#f2ecdc] md:p-8"><div className="flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#d4bd83]">Your shelves, in color</p><h2 className="mt-2 font-serif text-3xl">Genres you wander</h2></div><Sparkles size={19} className="text-[#d7bc78]"/></div>
-          {data?.genreBreakdown?.length ? <div className="mt-7 space-y-4">{data.genreBreakdown.slice(0,5).map((g,i)=><div key={g.genre}><div className="mb-1.5 flex justify-between text-xs"><span>{g.genre}</span><span className="font-mono text-[10px] text-[#b7c5b8]">{g.count}</span></div><div className="h-[5px] overflow-hidden rounded-full bg-[#ffffff20]"><div style={{width:`${Math.max(8,g.count/Math.max(...data.genreBreakdown.map(x=>x.count))*100)}%`,background:genreTones[i%genreTones.length]}} className="h-full rounded-full"/></div></div>)}</div> : <p className="mt-7 text-sm text-[#c3d0c3]">Your genre portrait will take shape as your library grows.</p>}
+        <ReadingRhythmChart books={books.data} isLoading={books.isLoading} isError={books.isError} retry={()=>books.refetch()}/>
+        <section aria-labelledby="genre-title" className="rounded-2xl bg-[#284d3d] p-6 text-[#f2ecdc] md:p-8"><div className="flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#d4bd83]">Finished books, by genre</p><h2 id="genre-title" className="mt-2 font-serif text-3xl">Genres you wander</h2></div><Sparkles size={19} className="text-[#d7bc78]"/></div>
+          {genres.length && maxGenre > 0 ? <ul className="mt-7 space-y-4">{genres.slice(0,6).map((g,i)=><li key={g.genre}><div className="mb-1.5 flex justify-between text-xs"><span>{g.genre}</span><span className="font-mono text-[10px] text-[#b7c5b8]">{g.count} {g.count===1?'book':'books'}</span></div><div className="h-[5px] overflow-hidden rounded-full bg-[#ffffff20]" aria-hidden="true"><div style={{width:`${g.count/maxGenre*100}%`,background:genreTones[i%genreTones.length]}} className="h-full rounded-full"/></div></li>)}</ul> : <p className="mt-7 text-sm text-[#c3d0c3]">Your genre portrait will take shape as you finish books.</p>}
+          {genres.length > 6 && <p className="mt-4 text-[11px] text-[#b7c5b8]">Showing top 6 of {genres.length} genres.</p>}
           <Link href="/books" className="mt-7 inline-flex items-center gap-2 text-xs font-semibold text-[#e7d18f] no-underline">Browse your collection <ArrowRight size={14}/></Link>
         </section>
       </div>
-      <div className="mt-7 grid gap-5 lg:grid-cols-[1fr_1.2fr]">
-        <section className="rounded-2xl border border-[#ded7c8] bg-[#ebe3d3] p-6"><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#a17d50]">The book that lingered</p><div className="mt-5 flex items-center gap-5">{data?.longestReadBook ? <><Cover book={data.longestReadBook} className="h-[105px] w-[72px] shrink-0 rounded-md shadow-md"/><div><h3 className="font-serif text-2xl leading-tight">{data.longestReadBook.title}</h3><p className="mt-1 text-xs text-[#758175]">{data.longestReadBook.author}</p><p className="mt-4 font-mono text-[10px] text-[#9a7950]">{data.longestReadBook.pages || '—'} pages • your longest read</p></div></> : <div className="py-5"><p className="font-serif text-2xl">Long stories are ahead.</p><p className="mt-2 text-sm text-[#718075]">Finish a book to see it celebrated here.</p></div>}</div></section>
-        <section className="rounded-2xl border border-[#ded7c8] bg-[#faf8f1] p-6"><div className="flex items-center justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#a17d50]">Recently shelved</p><h2 className="mt-1 font-serif text-2xl">A few new arrivals</h2></div><Link href="/books" className="text-xs font-semibold text-[#315744] no-underline">View library <ArrowRight size={13} className="ml-1 inline"/></Link></div>
-          {books.isLoading ? <div className="mt-5 h-24 animate-pulse rounded-xl bg-[#e8e3d7]"/> : books.isError ? <p className="mt-5 text-sm text-[#8b665b]">Recent books are unavailable at the moment.</p> : books.data?.length ? <div className="mt-5 flex gap-4 overflow-x-auto pb-2">{books.data.slice(0,5).map(b=><Link key={b.id} href={`/books/${b.id}`} className="w-[82px] shrink-0 text-[#263e34] no-underline"><Cover book={b} className="aspect-[.68] w-full rounded-md shadow-sm"/><p className="mt-2 line-clamp-1 font-serif text-sm">{b.title}</p><p className="line-clamp-1 text-[10px] text-[#7d897e]">{b.author}</p></Link>)}</div> : <p className="mt-6 text-sm text-[#718075]">Your first book is waiting to be added.</p>}
-        </section>
+      <div className="mt-7 grid gap-5 md:grid-cols-2">
+        <RecordBook eyebrow="The book that lingered" book={data.longestReadBook} detail={longestDetail(data.longestReadBook)} emptyTitle="Long stories are ahead." emptyBody="Finish a book with a page count to see it here." cover={recordCover}/>
+        <RecordBook tone="paper" eyebrow="The one you couldn't put down" book={data.fastestReadBook} detail={fastestDetail(data.fastestReadingDays)} emptyTitle="No quick reads clocked yet." emptyBody="Add start and finish dates to a read book to find your fastest." cover={recordCover}/>
       </div>
+      <p className="mt-3 text-xs text-[#718075]">Records use finished books only. Fastest read measures elapsed calendar days between the saved start and finish dates; a same-day read is 0 days.</p>
+      <section className="mt-5 rounded-2xl border border-[#ded7c8] bg-[#faf8f1] p-6"><div className="flex items-center justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#a17d50]">Recently shelved</p><h2 className="mt-1 font-serif text-2xl">A few new arrivals</h2></div><Link href="/books" className="text-xs font-semibold text-[#315744] no-underline">View library <ArrowRight size={13} className="ml-1 inline"/></Link></div>
+        {books.isLoading ? <div className="mt-5 h-24 animate-pulse rounded-xl bg-[#e8e3d7]"/> : books.isError ? <p className="mt-5 text-sm text-[#8b665b]">Recent books are unavailable at the moment.</p> : recent.length ? <div className="mt-5 flex gap-4 overflow-x-auto pb-2">{recent.map(b=><Link key={b.id} href={`/books/${b.id}`} className="w-[82px] shrink-0 text-[#263e34] no-underline"><Cover book={b} className="aspect-[.68] w-full rounded-md shadow-sm"/><p className="mt-2 line-clamp-1 font-serif text-sm">{b.title}</p><p className="line-clamp-1 text-[10px] text-[#7d897e]">{b.author}</p></Link>)}</div> : <p className="mt-6 text-sm text-[#718075]">Your first book is waiting to be added.</p>}
+      </section>
     </>}
   </AppShell>;
 }
