@@ -82,7 +82,7 @@ export const getGetCurrentAuthUserUrl = () => {
 }
 
 /**
- * @summary Current Replit-authenticated reader
+ * @summary Current authenticated reader
  */
 export const getCurrentAuthUser = async ( options?: Parameters<typeof customFetch>[1]): Promise<AuthUserEnvelope> => {
 
@@ -153,7 +153,7 @@ export function useGetCurrentAuthUser<TData = Awaited<ReturnType<typeof getCurre
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Current Replit-authenticated reader
+ * @summary Current authenticated reader
  */
 
 export function useGetCurrentAuthUser<TData = Awaited<ReturnType<typeof getCurrentAuthUser>>, TError = ErrorType<unknown>>(
@@ -336,7 +336,7 @@ export const useLogoutBrowserSession = <TError = ErrorType<unknown>,
       return useMutation(getLogoutBrowserSessionMutationOptions(options), queryClient);
     }
 
-export const getBeginReplitLoginUrl = () => {
+export const getBeginGithubLoginUrl = () => {
 
 
 
@@ -345,11 +345,11 @@ export const getBeginReplitLoginUrl = () => {
 }
 
 /**
- * @summary Begin Replit OIDC login with state, nonce, and PKCE
+ * @summary Begin GitHub OAuth login with state and PKCE
  */
-export const beginReplitLogin = async ( options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+export const beginGithubLogin = async ( options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
-  return customFetch<unknown>(getBeginReplitLoginUrl(),
+  return customFetch<unknown>(getBeginGithubLoginUrl(),
   {
     ...options,
     method: 'GET'
@@ -362,69 +362,69 @@ export const beginReplitLogin = async ( options?: Parameters<typeof customFetch>
 
 
 
-export const getBeginReplitLoginQueryKey = () => {
+export const getBeginGithubLoginQueryKey = () => {
     return [
     `/api/login`
     ] as const;
     }
 
 
-export const getBeginReplitLoginQueryOptions = <TData = Awaited<ReturnType<typeof beginReplitLogin>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginReplitLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getBeginGithubLoginQueryOptions = <TData = Awaited<ReturnType<typeof beginGithubLogin>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginGithubLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getBeginReplitLoginQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getBeginGithubLoginQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof beginReplitLogin>>> = ({ signal }) => beginReplitLogin({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof beginGithubLogin>>> = ({ signal }) => beginGithubLogin({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof beginReplitLogin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof beginGithubLogin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type BeginReplitLoginQueryResult = NonNullable<Awaited<ReturnType<typeof beginReplitLogin>>>
-export type BeginReplitLoginQueryError = ErrorType<void>
+export type BeginGithubLoginQueryResult = NonNullable<Awaited<ReturnType<typeof beginGithubLogin>>>
+export type BeginGithubLoginQueryError = ErrorType<void>
 
 
-export function useBeginReplitLogin<TData = Awaited<ReturnType<typeof beginReplitLogin>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginReplitLogin>>, TError, TData>> & Pick<
+export function useBeginGithubLogin<TData = Awaited<ReturnType<typeof beginGithubLogin>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginGithubLogin>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof beginReplitLogin>>,
+          Awaited<ReturnType<typeof beginGithubLogin>>,
           TError,
-          Awaited<ReturnType<typeof beginReplitLogin>>
+          Awaited<ReturnType<typeof beginGithubLogin>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBeginReplitLogin<TData = Awaited<ReturnType<typeof beginReplitLogin>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginReplitLogin>>, TError, TData>> & Pick<
+export function useBeginGithubLogin<TData = Awaited<ReturnType<typeof beginGithubLogin>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginGithubLogin>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof beginReplitLogin>>,
+          Awaited<ReturnType<typeof beginGithubLogin>>,
           TError,
-          Awaited<ReturnType<typeof beginReplitLogin>>
+          Awaited<ReturnType<typeof beginGithubLogin>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBeginReplitLogin<TData = Awaited<ReturnType<typeof beginReplitLogin>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginReplitLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useBeginGithubLogin<TData = Awaited<ReturnType<typeof beginGithubLogin>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginGithubLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Begin Replit OIDC login with state, nonce, and PKCE
+ * @summary Begin GitHub OAuth login with state and PKCE
  */
 
-export function useBeginReplitLogin<TData = Awaited<ReturnType<typeof beginReplitLogin>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginReplitLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useBeginGithubLogin<TData = Awaited<ReturnType<typeof beginGithubLogin>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof beginGithubLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getBeginReplitLoginQueryOptions(options)
+  const queryOptions = getBeginGithubLoginQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -437,7 +437,7 @@ export function useBeginReplitLogin<TData = Awaited<ReturnType<typeof beginRepli
 
 
 
-export const getFinishReplitLoginUrl = () => {
+export const getFinishGithubLoginUrl = () => {
 
 
 
@@ -446,11 +446,11 @@ export const getFinishReplitLoginUrl = () => {
 }
 
 /**
- * @summary Verify the Replit login and return a one-time handoff code
+ * @summary Verify the GitHub login and return a one-time handoff code
  */
-export const finishReplitLogin = async ( options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+export const finishGithubLogin = async ( options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
-  return customFetch<unknown>(getFinishReplitLoginUrl(),
+  return customFetch<unknown>(getFinishGithubLoginUrl(),
   {
     ...options,
     method: 'GET'
@@ -463,69 +463,69 @@ export const finishReplitLogin = async ( options?: Parameters<typeof customFetch
 
 
 
-export const getFinishReplitLoginQueryKey = () => {
+export const getFinishGithubLoginQueryKey = () => {
     return [
     `/api/callback`
     ] as const;
     }
 
 
-export const getFinishReplitLoginQueryOptions = <TData = Awaited<ReturnType<typeof finishReplitLogin>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishReplitLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export const getFinishGithubLoginQueryOptions = <TData = Awaited<ReturnType<typeof finishGithubLogin>>, TError = ErrorType<void>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishGithubLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getFinishReplitLoginQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getFinishGithubLoginQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof finishReplitLogin>>> = ({ signal }) => finishReplitLogin({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof finishGithubLogin>>> = ({ signal }) => finishGithubLogin({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof finishReplitLogin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof finishGithubLogin>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type FinishReplitLoginQueryResult = NonNullable<Awaited<ReturnType<typeof finishReplitLogin>>>
-export type FinishReplitLoginQueryError = ErrorType<void>
+export type FinishGithubLoginQueryResult = NonNullable<Awaited<ReturnType<typeof finishGithubLogin>>>
+export type FinishGithubLoginQueryError = ErrorType<void>
 
 
-export function useFinishReplitLogin<TData = Awaited<ReturnType<typeof finishReplitLogin>>, TError = ErrorType<void>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishReplitLogin>>, TError, TData>> & Pick<
+export function useFinishGithubLogin<TData = Awaited<ReturnType<typeof finishGithubLogin>>, TError = ErrorType<void>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishGithubLogin>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof finishReplitLogin>>,
+          Awaited<ReturnType<typeof finishGithubLogin>>,
           TError,
-          Awaited<ReturnType<typeof finishReplitLogin>>
+          Awaited<ReturnType<typeof finishGithubLogin>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFinishReplitLogin<TData = Awaited<ReturnType<typeof finishReplitLogin>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishReplitLogin>>, TError, TData>> & Pick<
+export function useFinishGithubLogin<TData = Awaited<ReturnType<typeof finishGithubLogin>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishGithubLogin>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof finishReplitLogin>>,
+          Awaited<ReturnType<typeof finishGithubLogin>>,
           TError,
-          Awaited<ReturnType<typeof finishReplitLogin>>
+          Awaited<ReturnType<typeof finishGithubLogin>>
         > , 'initialData'
       >, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFinishReplitLogin<TData = Awaited<ReturnType<typeof finishReplitLogin>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishReplitLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useFinishGithubLogin<TData = Awaited<ReturnType<typeof finishGithubLogin>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishGithubLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary Verify the Replit login and return a one-time handoff code
+ * @summary Verify the GitHub login and return a one-time handoff code
  */
 
-export function useFinishReplitLogin<TData = Awaited<ReturnType<typeof finishReplitLogin>>, TError = ErrorType<void>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishReplitLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+export function useFinishGithubLogin<TData = Awaited<ReturnType<typeof finishGithubLogin>>, TError = ErrorType<void>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof finishGithubLogin>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getFinishReplitLoginQueryOptions(options)
+  const queryOptions = getFinishGithubLoginQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -1,25 +1,15 @@
 import { and, eq, gt, lt } from "drizzle-orm";
 import { db, usersTable, appAuthIdentitiesTable, appAuthSessionsTable, appAuthHandoffsTable } from "@workspace/db";
-import * as oidc from "openid-client";
 import { opaqueCode, sessionHash } from "./auth-policy";
+import type { GithubReader } from "./github-oauth";
 
-let configPromise: Promise<oidc.Configuration> | undefined;
-export function oidcConfig() {
-  const clientId = process.env.REPL_ID;
-  if (!clientId) throw new Error("REPL_ID is required for Sign in with Replit.");
-  return configPromise ??= oidc.discovery(new URL("https://replit.com/oidc"), clientId).catch(error => {
-    configPromise = undefined;
-    throw error;
-  });
-}
-
-export async function upsertReplitReader(claims: Record<string, unknown>) {
-  if (typeof claims.sub !== "string" || !claims.sub) throw new Error("Verified identity is missing its subject.");
-  const subject = claims.sub;
+export async function upsertGithubReader(reader: GithubReader) {
+  if (!Number.isSafeInteger(reader.id) || reader.id < 1) throw new Error("Verified GitHub identity is missing its numeric ID.");
+  // Prefix prevents collisions with the existing Replit subject namespace.
+  const subject = `github:${reader.id}`;
   const profile = {
-    username: typeof claims.name === "string" ? claims.name :
-      typeof claims.first_name === "string" ? claims.first_name : null,
-    email: typeof claims.email === "string" ? claims.email : null,
+    username: reader.username,
+    email: reader.email,
   };
   return db.transaction(async tx => {
     const [identity] = await tx.select().from(appAuthIdentitiesTable).where(eq(appAuthIdentitiesTable.subject, subject));
@@ -29,7 +19,7 @@ export async function upsertReplitReader(claims: Record<string, unknown>) {
       return user;
     }
     // The old column is an internal unique key only; no Clerk calls or credentials are used.
-    const [user] = await tx.insert(usersTable).values({ clerkUserId: `replit:${subject}`, ...profile })
+    const [user] = await tx.insert(usersTable).values({ clerkUserId: subject, ...profile })
       .onConflictDoUpdate({ target: usersTable.clerkUserId, set: profile }).returning();
     await tx.insert(appAuthIdentitiesTable).values({ subject, userId: user.id }).onConflictDoNothing();
     return user;

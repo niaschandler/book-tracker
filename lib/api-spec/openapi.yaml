@@ -23,7 +23,7 @@ paths:
     get:
       operationId: getCurrentAuthUser
       tags: [auth]
-      summary: Current Replit-authenticated reader
+      summary: Current authenticated reader
       responses:
         "200":
           description: Current session or signed-out state
@@ -55,16 +55,16 @@ paths:
         "204": { description: Session revoked }
   /login:
     get:
-      operationId: beginReplitLogin
+      operationId: beginGithubLogin
       tags: [auth]
-      summary: Begin Replit OIDC login with state, nonce, and PKCE
+      summary: Begin GitHub OAuth login with state and PKCE
       responses:
-        "302": { description: Redirect to Replit }
+        "302": { description: Redirect to GitHub or return a friendly setup error }
   /callback:
     get:
-      operationId: finishReplitLogin
+      operationId: finishGithubLogin
       tags: [auth]
-      summary: Verify the Replit login and return a one-time handoff code
+      summary: Verify the GitHub login and return a one-time handoff code
       responses:
         "302": { description: Redirect to the configured frontend }
   /healthz:

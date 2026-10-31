@@ -4,13 +4,13 @@ A personal reading library for tracking books read, owned, and wanted, with priv
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
 - `pnpm --filter @workspace/book-tracker run dev` — run the web app
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required environment: `DATABASE_URL` plus the Replit-managed Clerk variables
+- Required backend environment: `DATABASE_URL`, `GITHUB_OAUTH_CLIENT_ID`, and `GITHUB_OAUTH_CLIENT_SECRET`. Production also needs `AUTH_PUBLIC_ORIGIN` and `FRONTEND_URLS`; see `docs/github-oauth.md`.
 
 ## Stack
 
@@ -19,7 +19,7 @@ A personal reading library for tracking books read, owned, and wanted, with priv
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Build: esbuild (ESM bundle)
 
 ## Where things live
 

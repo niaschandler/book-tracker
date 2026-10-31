@@ -9,7 +9,7 @@ import * as zod from 'zod';
 
 
 /**
- * @summary Current Replit-authenticated reader
+ * @summary Current authenticated reader
  */
 export const GetCurrentAuthUserResponse = zod.object({
   "user": zod.union([zod.object({
@@ -54,15 +54,15 @@ export const LogoutBrowserSessionResponse = zod.void()
 
 
 /**
- * @summary Begin Replit OIDC login with state, nonce, and PKCE
+ * @summary Begin GitHub OAuth login with state and PKCE
  */
-export const BeginReplitLoginResponse = zod.void()
+export const BeginGithubLoginResponse = zod.void()
 
 
 /**
- * @summary Verify the Replit login and return a one-time handoff code
+ * @summary Verify the GitHub login and return a one-time handoff code
  */
-export const FinishReplitLoginResponse = zod.void()
+export const FinishGithubLoginResponse = zod.void()
 
 
 /**

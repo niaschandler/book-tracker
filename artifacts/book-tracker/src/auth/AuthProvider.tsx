@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!exchangeOnce && cb.code) {
         let verifier: string | null = null;
         try { verifier = sessionStorage.getItem(VERIFIER_KEY); sessionStorage.removeItem(VERIFIER_KEY); } catch { /* ignore */ }
-        if (!verifier) { setLoginError('This sign-in started in a different tab or expired. Please continue with Replit again.'); void restore(); return undefined; }
+        if (!verifier) { setLoginError('This sign-in started in a different tab or expired. Please continue with GitHub again.'); void restore(); return undefined; }
         exchangeOnce = authFetch<BrowserLoginSession>('/api/auth/exchange', { method: 'POST', body: JSON.stringify({ code: cb.code, verifier }) }, null)
           .then(s => { if (!s?.token) throw new Error('No session'); return s; });
       }
