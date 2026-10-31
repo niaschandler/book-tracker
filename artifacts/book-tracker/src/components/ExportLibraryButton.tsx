@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { useAuth } from '@clerk/react';
+import { useAuth } from '@/auth';
 import { Download } from 'lucide-react';
 import { getExportBooksQueryKey, useExportBooks } from '@workspace/api-client-react';
 

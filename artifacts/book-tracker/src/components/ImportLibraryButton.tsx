@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@clerk/react';
+import { useAuth } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload } from 'lucide-react';
 import {

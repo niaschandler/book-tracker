@@ -10,27 +10,29 @@ The experience should feel like walking into a grand library at a prestigious un
 
 ## Features
 
-- Sign up, sign in, and sign out with Clerk. Each signed-in account sees only its own books and stars.
+- Sign in and sign out with Replit. Visitors use or create a Replit account; each signed-in reader sees only their own books and stars.
 - Add, view, edit, and delete books, with confirmation before deletion.
 - Track author, genre, page count, rating, shelf status, reading dates, mood tags, cover, and notes.
 - Star books and view only starred items.
 - Search by title or author; filter by status, genre, and starred state; sort by newest, title, rating, or length.
 - Search Open Library and bring catalog details and cover images into a book entry.
 - Review reading totals, pages read, average rating, genre counts, longest book, fastest dated read, and this month's finished books.
-- Browse a visual bookshelf of finished books.
+- Browse visual shelves of finished books and books bought but not yet read.
 - Pick a random book from Want to Read, optionally filtered by genre, maximum pages, and mood.
-- Download the library as CSV for spreadsheet apps.
+- Download the complete library as an Excel spreadsheet and import an existing book list with a validation preview.
 
 ## Data and privacy
 
-The app uses a `users` table linked to each Clerk account, a `books` table owned by a user, and one `stars` junction table keyed by user and book. Every book and star query is scoped to the signed-in account. Book records are not seeded with shared demo data.
+Replit identities link to the existing `users` table. Shared catalog books have private per-reader reading records, and one shared `stars` junction table represents reader/book stars. Every private query is scoped to the authenticated reader. Sessions are opaque, stored hashed in PostgreSQL, and sent as Bearer headers so the GitHub Pages frontend does not depend on third-party cookies.
+
+Existing libraries from the previous login remain intact. Account linking requires independent owner verification; accounts are never automatically matched by email.
 
 ## Technology
 
 - React, Vite, TypeScript, and pnpm workspaces
 - Express API with an OpenAPI contract and generated React Query / Zod clients
 - PostgreSQL with Drizzle ORM
-- Clerk-managed authentication
+- Replit OpenID Connect authentication with PKCE
 - Open Library Search API and Covers API
 
 ## Running in Replit
@@ -47,7 +49,14 @@ After changing `lib/api-spec/openapi.yaml`, regenerate API clients:
 pnpm --filter @workspace/api-spec run codegen
 ```
 
-Development uses the workspace PostgreSQL database and Replit-managed Clerk configuration. Do not commit environment secrets.
+Development uses the workspace PostgreSQL database and Replit authentication. Do not commit environment secrets.
+
+## GitHub Pages + Replit hosting
+
+The frontend can run on the standard GitHub Pages address; the API, database,
+and login run on Replit. See [the setup guide](docs/github-pages-replit.md) for
+the two backend URL settings, the public GitHub repository variable, manual
+publishing workflow, and existing-account linking instructions.
 
 ## Original acceptance goals
 

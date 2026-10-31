@@ -6,11 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './authReader';
+export * from './authUserEnvelope';
 export * from './book';
 export * from './bookExport';
 export * from './bookInput';
 export * from './bookStatus';
 export * from './bookUpdate';
+export * from './browserLoginProof';
+export * from './browserLoginSession';
 export * from './catalogBook';
 export * from './currentUserResponse';
 export * from './dashboardSummary';

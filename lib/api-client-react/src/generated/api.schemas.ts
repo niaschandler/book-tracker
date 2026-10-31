@@ -5,6 +5,37 @@
  * Book Tracker API
  * OpenAPI spec version: 0.1.0
  */
+export interface AuthReader {
+  id: string;
+  /** @nullable */
+  username: string | null;
+  /** @nullable */
+  email: string | null;
+}
+
+export interface AuthUserEnvelope {
+  user: AuthReader | null;
+}
+
+export interface BrowserLoginProof {
+  /**
+     * @minLength 32
+     * @maxLength 128
+     */
+  code: string;
+  /**
+     * @minLength 43
+     * @maxLength 128
+     */
+  verifier: string;
+}
+
+export interface BrowserLoginSession {
+  token: string;
+  user: AuthReader;
+  expiresAt: string;
+}
+
 export type LibraryImportRowValues = {[key: string]: string};
 
 export interface LibraryImportRow {
