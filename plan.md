@@ -11,7 +11,7 @@ A real list of things I've read and meant to read
    7. Dashboard | At least one chart and summary stats computed from your data (books, pages, genres, average rating, longest book, fastest read).
    8. Virtual Bookshelf | As a proud book hoarder, I want to see everything I've read, so that I can be proud of my collection.
    9. “What next?” picker | random pick from your Want to Read list, filtered by mood, length, or genre. As a rom-com fan, I want to broaden my genre selections, so that I'm not only reading one type of book.
-   10. Export | Users can download their data as a spreadsheet. As a ___, I want ___, so that
+   10. Export | Users can download their data as a spreadsheet. As an infrequent tech user, I want to be able to take me data with me, so that it's not stuck in one app.
 
 3. Database | diagram:
 
