@@ -5,7 +5,7 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import {
   useCreateBook, useEnsureCurrentUser, useExportBooks, useGetBook, useGetDashboardSummary,
-  useListBooks, usePickNextBook, useSearchCatalog, useSetBookStar, useUpdateBook,
+  useListBooks, usePickNextBook, useSearchCatalog, useUpdateBook,
   getListBooksQueryKey, getGetBookQueryKey, getGetDashboardSummaryQueryKey,
   getPickNextBookQueryKey, getSearchCatalogQueryKey, getExportBooksQueryKey,
   type Book, type BookInput, type BookUpdate, type ListBooksParams, type PickNextBookParams,
@@ -20,6 +20,7 @@ import { Link, Redirect, Route, Switch, useLocation, useParams, Router as Wouter
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { DeleteBookDialog } from '@/components/DeleteBookDialog';
+import { StarBookButton } from '@/components/StarBookButton';
 import { refreshLibrary } from '@/lib/library-cache';
 import { requiredBookErrors } from '@/lib/book-form-validation';
 import './index.css';
@@ -92,6 +93,7 @@ function AppShell({ children, section }: { children: ReactNode; section: string 
   const links = [
     { href: '/dashboard', label: 'Reading room', icon: Library },
     { href: '/books', label: 'My library', icon: BookOpen },
+    { href: '/starred', label: 'Starred', icon: Star },
     { href: '/shelf', label: 'Finished books', icon: Bookmark },
     { href: '/next', label: 'Choose a book', icon: Compass },
   ];
@@ -294,11 +296,9 @@ function BookDialog({ open, onClose, initial, onSaved }: { open: boolean; onClos
 }
 
 function BookCard({book,onEdit,onDelete}:{book:Book;onEdit:(b:Book)=>void;onDelete:(b:Book)=>void}) {
-  const qc=useQueryClient();const star=useSetBookStar();
-  const toggle=()=>star.mutate({id:book.id,data:{starred:!book.starred}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListBooksQueryKey()});qc.invalidateQueries({queryKey:getGetBookQueryKey(book.id)});}});
   return <article className="group relative min-w-0">
     <div className="relative"><Link href={`/books/${book.id}`} className="block no-underline"><Cover book={book} className="aspect-[.68] w-full rounded-md shadow-[2px_5px_12px_rgba(55,44,28,.16)] transition duration-300 group-hover:-translate-y-1 group-hover:shadow-[5px_12px_20px_rgba(55,44,28,.2)]"/></Link>
-      <button aria-label={book.starred?'Remove favorite':'Favorite book'} data-testid={`button-star-${book.id}`} onClick={toggle} className={`absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full backdrop-blur-sm transition ${book.starred?'bg-[#f3d997] text-[#73552d]':'bg-[#faf8f1dd] text-[#758075] opacity-0 group-hover:opacity-100 focus:opacity-100'}`}><Star size={15} fill={book.starred?'currentColor':'none'}/></button>
+      <StarBookButton book={book} compact/>
       <div className="absolute bottom-2 left-2 rounded-sm bg-[#f8f3e8e8] px-2 py-1 font-mono text-[8px] uppercase tracking-[.1em] text-[#506958]">{statusLabels[book.status]}{book.isOwned?' · Owned':''}</div>
     </div>
     <div className="mt-3 flex items-start justify-between gap-1"><Link href={`/books/${book.id}`} className="min-w-0 text-[#263e34] no-underline"><h3 className="line-clamp-2 font-serif text-[18px] leading-[1.05]">{book.title}</h3><p className="mt-1.5 truncate text-[11px] text-[#788477]">{book.author}</p></Link><div className="flex gap-2"><button aria-label={`Edit ${book.title}`} onClick={()=>onEdit(book)} className="mt-1 text-[#8e988a] transition hover:text-[#315744] focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"><SlidersHorizontal size={15}/></button><button aria-label={`Remove ${book.title}`} onClick={()=>onDelete(book)} className="mt-1 text-[#a46b5c] transition hover:text-[#a7453c] focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={15}/></button></div></div>
@@ -306,12 +306,13 @@ function BookCard({book,onEdit,onDelete}:{book:Book;onEdit:(b:Book)=>void;onDele
   </article>;
 }
 
-function BooksPage() {
+function BooksPage({starredView=false}:{starredView?:boolean}) {
   const [search,setSearch]=useState('');const [status,setStatus]=useState('all');const [genre,setGenre]=useState('all');const [starred,setStarred]=useState(false);const [sort,setSort]=useState<'newest'|'title'|'rating'|'pages'>('newest');
   const [deleting,setDeleting]=useState<Book|null>(null);
   const [ownedOnly,setOwnedOnly]=useState(false);
   const [modal,setModal]=useState(false);const [editing,setEditing]=useState<Book|undefined>();const [message,setMessage]=useState('');
-  const params=useMemo<ListBooksParams>(()=>({search:search||undefined,status:status==='all'?undefined:status as BookStatus,genre:genre==='all'?undefined:genre,starredOnly:starred||undefined,isOwned:ownedOnly||undefined,sort}),[search,status,genre,starred,ownedOnly,sort]);
+  const params=useMemo<ListBooksParams>(()=>({search:search||undefined,status:status==='all'?undefined:status as BookStatus,genre:genre==='all'?undefined:genre,starredOnly:starredView||starred||undefined,isOwned:ownedOnly||undefined,sort}),[search,status,genre,starred,starredView,ownedOnly,sort]);
+  useEffect(()=>{document.title=starredView?'Starred books | Marginalia':'My library | Marginalia';},[starredView]);
   const query=useListBooks(params,{query:{queryKey:getListBooksQueryKey(params)}});
   const exportQuery=useExportBooks({query:{queryKey:getExportBooksQueryKey(),enabled:false}});
   const genreOptions=useMemo(()=>Array.from(new Set((query.data||[]).map(b=>b.genre).filter(Boolean) as string[])).sort(),[query.data]);
@@ -320,21 +321,32 @@ function BooksPage() {
   const closeModal=()=>{setModal(false);setEditing(undefined);};
   const deleteBook=(b:Book)=>setDeleting(b);
   const exportCsv=async()=>{const result=await exportQuery.refetch();if(result.data){const fields=Object.keys(result.data[0]||{title:'',author:'',genre:'',pages:'',rating:'',status:'',isOwned:'',isbn:'',description:'',moodTags:'',notes:'',startedOn:'',finishedOn:''});const esc=(v:unknown)=>`"${String(Array.isArray(v)?v.join('|'):v??'').replaceAll('"','""')}"`;const csv=[fields.join(','),...result.data.map(row=>fields.map(k=>esc((row as unknown as Record<string,unknown>)[k])).join(','))].join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='marginalia-library.csv';a.click();URL.revokeObjectURL(url);setMessage('Your library export is ready.');}};
-  return <AppShell section="/books"><PageTitle eyebrow="The catalog" title="My library." sub="Every volume has a place. Search your shelves, sort the story, or add something new." action={<button onClick={()=>{setEditing(undefined);setModal(true);}} className="inline-flex items-center gap-2 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] hover:bg-[#1f4536]"><Plus size={16}/> Add a book</button>}/>
+  return <AppShell section={starredView?'/starred':'/books'}><PageTitle eyebrow={starredView?'Your favorites':'The catalog'} title={starredView?'Starred books.':'My library.'} sub={starredView?'Books you have starred, kept together in one private view. Unstar a book to remove it from this view, not your library.':'Every volume has a place. Search your shelves, sort the story, or add something new.'} action={<button onClick={()=>{setEditing(undefined);setModal(true);}} className="inline-flex items-center gap-2 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] hover:bg-[#1f4536]"><Plus size={16}/> Add a book</button>}/>
     <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-[#ded7c8] bg-[#faf8f1] p-3 md:flex-row md:items-center">
       <div className="relative min-w-[210px] flex-1"><Search size={16} className="absolute left-3 top-3 text-[#829084]"/><input aria-label="Search books" data-testid="input-book-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title or author…" className="form-input !border-0 !bg-transparent !pl-9"/></div>
-      <div className="flex flex-wrap gap-2"><select aria-label="Filter by status" value={status} onChange={e=>setStatus(e.target.value)} className="filter-select"><option value="all">All shelves</option>{Object.entries(statusLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><select aria-label="Filter by genre" value={genre} onChange={e=>setGenre(e.target.value)} className="filter-select"><option value="all">Every genre</option>{genreOptions.map(g=><option key={g} value={g}>{g}</option>)}</select><select aria-label="Sort books" value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="filter-select"><option value="newest">Recently added</option><option value="title">Title A–Z</option><option value="rating">Highest rated</option><option value="pages">Page count</option></select><button onClick={()=>setStarred(!starred)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11px] ${starred?'border-[#d0ae66] bg-[#f4e8c7] text-[#755c2d]':'border-[#ded7c8] text-[#758075]'}`}><Star size={13} fill={starred?'currentColor':'none'}/> Favorites</button><button disabled={exportQuery.isFetching} onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-full border border-[#ded7c8] px-3 py-2 text-[11px] text-[#526a59] hover:bg-[#eee8dc]"><Download size={13}/>{exportQuery.isFetching?'Preparing…':'Export CSV'}</button></div>
+      <div className="flex flex-wrap gap-2">
+        <select aria-label="Filter by status" value={status} onChange={e=>setStatus(e.target.value)} className="filter-select"><option value="all">All shelves</option>{Object.entries(statusLabels).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+        <select aria-label="Filter by genre" value={genre} onChange={e=>setGenre(e.target.value)} className="filter-select"><option value="all">Every genre</option>{genreOptions.map(g=><option key={g} value={g}>{g}</option>)}</select>
+        <select aria-label="Sort books" value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="filter-select"><option value="newest">Recently added</option><option value="title">Title A–Z</option><option value="rating">Highest rated</option><option value="pages">Page count</option></select>
+        {!starredView&&<button aria-pressed={starred} onClick={()=>setStarred(!starred)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[11px] ${starred?'border-[#d0ae66] bg-[#f4e8c7] text-[#755c2d]':'border-[#ded7c8] text-[#758075]'}`}><Star size={13} fill={starred?'currentColor':'none'}/> Starred only</button>}
+        <button disabled={exportQuery.isFetching} onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-full border border-[#ded7c8] px-3 py-2 text-[11px] text-[#526a59] hover:bg-[#eee8dc]"><Download size={13}/>{exportQuery.isFetching?'Preparing…':'Export CSV'}</button>
+      </div>
     </div>
     <label className="mb-5 flex items-center gap-2 text-xs text-[#526a59]"><input type="checkbox" checked={ownedOnly} onChange={e=>setOwnedOnly(e.target.checked)} className="accent-[#285342]"/>Show only books I own</label>
     {message&&<div className="mb-4 flex items-center justify-between rounded-xl bg-[#e5ecdf] px-4 py-2.5 text-xs text-[#42634f]"><span>{message}</span><button onClick={()=>setMessage('')} aria-label="Dismiss message"><X size={14}/></button></div>}
-    {query.isLoading?<SkeletonGrid/>:query.isError?<ErrorMessage retry={()=>query.refetch()}/>:query.data?.length?<><p className="mb-5 font-mono text-[9px] uppercase tracking-[.17em] text-[#869084]">{query.data.length} {query.data.length===1?'volume':'volumes'} in view</p><div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">{query.data.map(book=><BookCard key={book.id} book={book} onEdit={openEdit} onDelete={deleteBook}/>)}</div></>:<div className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-14 text-center"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e2d3] text-[#62806d]"><BookOpen size={25}/></div><h2 className="mt-5 font-serif text-3xl text-[#315744]">{hasFilters?'No books on this particular shelf.':'The shelves are waiting.'}</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#778477]">{hasFilters?'Try another search or loosen your filters. Your books are still here.':'Begin with the book beside your bed, the one you finished last month, or a story you cannot wait to open.'}</p><button onClick={()=>{setSearch('');setStatus('all');setGenre('all');setStarred(false);setOwnedOnly(false);if(!hasFilters){setEditing(undefined);setModal(true);}}} className="mt-6 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">{hasFilters?'Clear filters':'Add your first book'}</button></div>}
+    {query.isLoading?<SkeletonGrid/>:query.isError?<ErrorMessage retry={()=>query.refetch()}/>:query.data?.length?<><p className="mb-5 font-mono text-[9px] uppercase tracking-[.17em] text-[#869084]">{query.data.length} {query.data.length===1?'volume':'volumes'} in view</p><div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">{query.data.map(book=><BookCard key={book.id} book={book} onEdit={openEdit} onDelete={deleteBook}/>)}</div></>:<div className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-14 text-center">
+      <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#e9e2d3] text-[#62806d]">{starredView?<Star size={25}/>:<BookOpen size={25}/>}</div>
+      <h2 className="mt-5 font-serif text-3xl text-[#315744]">{hasFilters?'No books match these filters.':starredView?'No starred books yet.':'The shelves are waiting.'}</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#778477]">{hasFilters?'Try another search or loosen your filters.':starredView?'Tap the star on any book in your library to find it here.':'Begin with the book beside your bed, the one you finished last month, or a story you cannot wait to open.'}</p>
+      {starredView&&!hasFilters?<Link href="/books" className="mt-6 inline-flex rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1] no-underline">Browse my library</Link>:<button onClick={()=>{setSearch('');setStatus('all');setGenre('all');setStarred(false);setOwnedOnly(false);if(!hasFilters){setEditing(undefined);setModal(true);}}} className="mt-6 rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">{hasFilters?'Clear filters':'Add your first book'}</button>}
+    </div>}
     <DeleteBookDialog book={deleting} onClose={()=>setDeleting(null)} onDeleted={()=>setMessage('Book removed from your library.')}/>
     <BookDialog open={modal} initial={editing} onClose={closeModal} onSaved={()=>setMessage(editing?'Changes saved.':'Book added to your library.')}/>
   </AppShell>;
 }
 
 function BookDetail({id}:{id:number}) {
-  const qc=useQueryClient();const query=useGetBook(id,{query:{queryKey:getGetBookQueryKey(id),enabled:Number.isFinite(id),retry:false}});const update=useUpdateBook();const star=useSetBookStar();
+  const qc=useQueryClient();const query=useGetBook(id,{query:{queryKey:getGetBookQueryKey(id),enabled:Number.isFinite(id),retry:false}});const update=useUpdateBook();
   const [editing,setEditing]=useState(false);const [confirmDelete,setConfirmDelete]=useState(false);const [,setLocation]=useLocation();
   const book=query.data;
   const changeStatus=(status:BookStatus)=>{if(!book)return;update.mutate({id,data:{status}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getGetBookQueryKey(id)});qc.invalidateQueries({queryKey:getListBooksQueryKey()});qc.invalidateQueries({queryKey:getGetDashboardSummaryQueryKey()});}});};
@@ -342,7 +354,7 @@ function BookDetail({id}:{id:number}) {
   if(query.isError&&query.error.status!==404)return <AppShell section="/books"><ErrorMessage retry={()=>query.refetch()}/></AppShell>;
   if(!book||query.isError)return <AppShell section="/books"><div role="status" className="rounded-[24px] border border-dashed border-[#cfc6b4] bg-[#f8f5eb] px-6 py-14 text-center"><h1 className="font-serif text-3xl text-[#315744]">Book not found</h1><p className="mt-3 text-sm text-[#778477]">This book is no longer in your library.</p><Link href="/books" className="mt-6 inline-flex rounded-full bg-[#285342] px-5 py-3 text-xs font-semibold text-[#fbf8f1]">Back to your library</Link></div></AppShell>;
   return <AppShell section="/books"><Link href="/books" className="mb-7 inline-flex items-center gap-2 text-xs font-semibold text-[#65806b] no-underline"><ArrowLeft size={15}/> Back to your library</Link>
-    <div className="grid gap-8 md:grid-cols-[minmax(190px,290px)_1fr] md:gap-14"><div><Cover book={book} className="mx-auto aspect-[.68] w-[min(78%,290px)] rounded-lg shadow-[8px_14px_35px_rgba(45,39,27,.2)] md:mx-0 md:w-full"/><div className="mt-5 flex justify-center gap-2 md:justify-start"><button onClick={()=>star.mutate({id,data:{starred:!book.starred}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getGetBookQueryKey(id)});qc.invalidateQueries({queryKey:getListBooksQueryKey()});}})} className="rounded-full border border-[#d8d2c4] px-4 py-2 text-xs text-[#526a59]"><Star size={14} className="mr-1 inline" fill={book.starred?'currentColor':'none'}/>{book.starred?'Saved favorite':'Add favorite'}</button><button onClick={()=>setEditing(true)} className="rounded-full border border-[#d8d2c4] px-4 py-2 text-xs text-[#526a59]">Edit details</button></div></div>
+    <div className="grid gap-8 md:grid-cols-[minmax(190px,290px)_1fr] md:gap-14"><div><Cover book={book} className="mx-auto aspect-[.68] w-[min(78%,290px)] rounded-lg shadow-[8px_14px_35px_rgba(45,39,27,.2)] md:mx-0 md:w-full"/><div className="mt-5 flex flex-wrap justify-center gap-2 md:justify-start"><StarBookButton book={book}/><button onClick={()=>setEditing(true)} className="rounded-full border border-[#d8d2c4] px-4 py-2 text-xs text-[#526a59]">Edit details</button></div></div>
       <div className="pt-2"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#a17d50]">{book.genre||'From your collection'} {book.publishedYear?` · ${book.publishedYear}`:''}</p><h1 className="mt-3 max-w-3xl font-serif text-5xl leading-[.95] tracking-[-.035em] text-[#274b3b] md:text-7xl">{book.title}</h1><p className="mt-4 font-serif text-2xl text-[#788477]">{book.author}</p>
         <div className="mt-6 flex flex-wrap items-center gap-3">{book.rating&&<span className="tracking-[.14em] text-[#b08443]">{'★'.repeat(book.rating)}<span className="text-[#d9d1c0]">{'☆'.repeat(5-book.rating)}</span></span>}<span className="rounded-full bg-[#e7e1d3] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.12em] text-[#57705d]">{statusLabels[book.status]}</span>{book.pages&&<span className="font-mono text-[10px] text-[#839084]">{book.pages} pages</span>}</div>
         <div className="mt-8 max-w-[760px] border-y border-[#ded7c8] py-5"><p className="font-mono text-[9px] uppercase tracking-[.17em] text-[#a17d50]">Where this story sits</p><div className="mt-3 flex flex-wrap gap-2">{Object.entries(statusLabels).map(([value,label])=><button key={value} onClick={()=>changeStatus(value as BookStatus)} className={`rounded-full border px-4 py-2 text-xs transition ${book.status===value?'border-[#315744] bg-[#315744] text-[#f8f2e3]':'border-[#d8d2c4] text-[#526a59] hover:bg-[#e8e3d7]'}`}>{book.status===value&&<Check className="mr-1 inline" size={13}/>} {label}</button>)}</div></div>
@@ -397,6 +409,7 @@ function SignUpPage() { return <div className="library-paper flex min-h-[100dvh]
 function HomeRedirect(){return <><Show when="signed-in"><Redirect to="/dashboard"/></Show><Show when="signed-out"><HomePage/></Show></>;}
 function ProtectedDashboard(){return <RouteGate><Dashboard/></RouteGate>;}
 function ProtectedBooks(){return <RouteGate><BooksPage/></RouteGate>;}
+function ProtectedStarred(){return <RouteGate><BooksPage starredView/></RouteGate>;}
 function ProtectedShelf(){return <RouteGate><Shelf/></RouteGate>;}
 function ProtectedNext(){return <RouteGate><NextBook/></RouteGate>;}
 function ProtectedDetail(){const {id}=useParams<{id:string}>();return id?<RouteGate><BookDetail id={Number(id)}/></RouteGate>:<Redirect to="/books"/>;}
@@ -411,6 +424,7 @@ function ClerkRoutes(){
       <Route path="/sign-up/*?" component={SignUpPage}/>
       <Route path="/dashboard" component={ProtectedDashboard}/>
       <Route path="/books" component={ProtectedBooks}/>
+      <Route path="/starred" component={ProtectedStarred}/>
       <Route path="/books/:id" component={ProtectedDetail}/>
       <Route path="/shelf" component={ProtectedShelf}/>
       <Route path="/next" component={ProtectedNext}/>
