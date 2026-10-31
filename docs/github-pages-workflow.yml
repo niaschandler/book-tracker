@@ -1,0 +1,57 @@
+name: Publish book tracker to GitHub Pages
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.26.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: actions/configure-pages@v5
+        id: pages
+      - run: pnpm install --frozen-lockfile
+      - name: Validate public backend address
+        env:
+          API_ORIGIN: ${{ vars.REPLIT_API_ORIGIN }}
+        run: |
+          node --input-type=module -e '
+            if (!process.env.API_ORIGIN) throw Error("Add the REPLIT_API_ORIGIN repository variable first.");
+            const u = new URL(process.env.API_ORIGIN);
+            if (u.protocol !== "https:" || u.pathname !== "/" || u.search || u.hash || u.username || u.password)
+              throw Error("REPLIT_API_ORIGIN must be the published HTTPS Replit origin, with no /api or other path.");
+          '
+      - name: Build the static website
+        env:
+          PORT: "24596"
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          VITE_GITHUB_PAGES: "true"
+          VITE_API_ORIGIN: ${{ vars.REPLIT_API_ORIGIN }}
+        run: |
+          pnpm run typecheck:libs
+          pnpm --filter @workspace/book-tracker run typecheck
+          pnpm --filter @workspace/book-tracker run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifacts/book-tracker/dist/public
+  publish:
+    environment:
+      name: github-pages
+      url: ${{ steps.publish.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: publish

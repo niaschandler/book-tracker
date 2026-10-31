@@ -19,6 +19,54 @@ tags:
   - name: catalog
     description: Open Library search
 paths:
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      tags: [auth]
+      summary: Current Replit-authenticated reader
+      responses:
+        "200":
+          description: Current session or signed-out state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthUserEnvelope" }
+  /auth/exchange:
+    post:
+      operationId: exchangeBrowserLogin
+      tags: [auth]
+      summary: Exchange a one-time login code bound to the browser's PKCE proof
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BrowserLoginProof" }
+      responses:
+        "200":
+          description: Private application session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BrowserLoginSession" }
+  /auth/logout:
+    post:
+      operationId: logoutBrowserSession
+      tags: [auth]
+      summary: Revoke the current application session
+      responses:
+        "204": { description: Session revoked }
+  /login:
+    get:
+      operationId: beginReplitLogin
+      tags: [auth]
+      summary: Begin Replit OIDC login with state, nonce, and PKCE
+      responses:
+        "302": { description: Redirect to Replit }
+  /callback:
+    get:
+      operationId: finishReplitLogin
+      tags: [auth]
+      summary: Verify the Replit login and return a one-time handoff code
+      responses:
+        "302": { description: Redirect to the configured frontend }
   /healthz:
     get:
       operationId: healthCheck
@@ -259,6 +307,34 @@ paths:
                 items: { $ref: "#/components/schemas/CatalogBook" }
 components:
   schemas:
+    AuthReader:
+      type: object
+      required: [id, username, email]
+      properties:
+        id: { type: string }
+        username: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          anyOf:
+            - { $ref: "#/components/schemas/AuthReader" }
+            - { type: "null" }
+    BrowserLoginProof:
+      type: object
+      required: [code, verifier]
+      properties:
+        code: { type: string, minLength: 32, maxLength: 128 }
+        verifier: { type: string, minLength: 43, maxLength: 128 }
+    BrowserLoginSession:
+      type: object
+      required: [token, user, expiresAt]
+      properties:
+        token: { type: string }
+        user: { $ref: "#/components/schemas/AuthReader" }
+        expiresAt: { type: string, format: date-time }
     LibraryImportRow:
       type: object
       required: [row, values]

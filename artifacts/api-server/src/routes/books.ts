@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import { getAuth } from "@clerk/express";
-import { Router, type IRouter, type RequestHandler } from "express";
+import { Router, type IRouter } from "express";
+import { requireReader as requireAuth } from "../middlewares/replitSession";
 import {
   CreateBookBody,
   CreateBookResponse,
@@ -43,24 +43,7 @@ import { pickNextLibraryBook } from "../lib/book-picker";
 
 const router: IRouter = Router();
 
-const requireAuth: RequestHandler = (req, res, next) => {
-  const userId = getAuth(req).userId;
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  res.locals.clerkUserId = userId;
-  next();
-};
-
 async function resolveUserId(clerkUserId: string): Promise<number> {
-  const [inserted] = await db
-    .insert(usersTable)
-    .values({ clerkUserId })
-    .onConflictDoNothing({ target: usersTable.clerkUserId })
-    .returning({ id: usersTable.id });
-  if (inserted) return inserted.id;
-
   const [existing] = await db
     .select({ id: usersTable.id })
     .from(usersTable)

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, SignIn, SignUp, Show, useAuth, useClerk, useUser } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
+import { useHashLocation } from 'wouter/use-hash-location';
+import { AuthProvider, useAuth, useSession, useUser } from '@/auth';
 import {
   useCreateBook, useEnsureCurrentUser, useGetBook, useGetDashboardSummary,
   useListBooks, useSearchCatalog, useUpdateBook,
@@ -34,50 +33,9 @@ import { NextBookPicker } from '@/components/next/NextBookPicker';
 import './index.css';
 
 const queryClient = new QueryClient();
-const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; }
-if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
-
-const appearance = {
-  theme: shadcn,
-  cssLayerName: 'clerk',
-  options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
-  variables: {
-    colorPrimary: '#285342', colorForeground: '#263e34', colorMutedForeground: '#718276',
-    colorDanger: '#a7453c', colorBackground: '#fbf8f1', colorInput: '#fffdf8',
-    colorInputForeground: '#263e34', colorNeutral: '#d8d2c4',
-    fontFamily: "'DM Sans', sans-serif", borderRadius: '0.6rem',
-  },
-  elements: {
-    rootBox: 'w-full flex justify-center',
-    cardBox: 'bg-[#fbf8f1] rounded-[22px] w-[440px] max-w-full overflow-hidden shadow-[0_24px_70px_rgba(26,54,40,.16)]',
-    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    headerTitle: 'text-[#263e34] font-serif text-3xl',
-    headerSubtitle: 'text-[#718276]',
-    socialButtonsBlockButtonText: 'text-[#263e34] font-medium',
-    formFieldLabel: 'text-[#263e34] font-medium',
-    footerActionLink: 'text-[#285342] font-semibold',
-    footerActionText: 'text-[#718276]',
-    dividerText: 'text-[#718276]',
-    identityPreviewEditButton: 'text-[#285342]',
-    formFieldSuccessText: 'text-[#285342]',
-    alertText: 'text-[#8b332c]',
-    logoBox: 'mb-3',
-    logoImage: 'h-10',
-    socialButtonsBlockButton: 'border-[#d8d2c4] bg-[#fffdf8] hover:bg-[#f2eddf]',
-    formButtonPrimary: 'bg-[#285342] hover:bg-[#1f4536] text-[#fbf8f1] shadow-none',
-    formFieldInput: 'border-[#d8d2c4] bg-[#fffdf8] text-[#263e34]',
-    footerAction: 'border-t border-[#e7e1d5]',
-    dividerLine: 'bg-[#d8d2c4]',
-    alert: 'bg-[#fbefeb] border-[#ead0c9]',
-    otpCodeFieldInput: 'border-[#d8d2c4] bg-[#fffdf8] text-[#263e34]',
-    formFieldRow: 'gap-1.5',
-    main: 'gap-5',
-  },
-};
+const hashMode = import.meta.env.VITE_GITHUB_PAGES === 'true';
+const basePath = hashMode ? '' : import.meta.env.BASE_URL.replace(/\/$/, '');
+const assetBase = import.meta.env.BASE_URL;
 
 const genreTones = ['#d9aa62', '#b9785e', '#698b79', '#7894a3', '#aa8290', '#88945d'];
 const statusLabels: Record<BookStatus, string> = { want_to_read: 'Want to read', reading: 'Currently reading', read: 'Read' };
@@ -97,7 +55,9 @@ function Cover({ book, className = '' }: { book: Pick<Book, 'coverUrl' | 'title'
 function AppShell({ children, section }: { children: ReactNode; section: string }) {
   const [mobileNav, setMobileNav] = useState(false);
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const { signOut } = useSession();
+  const [, setLocation] = useLocation();
+  const [leaving, setLeaving] = useState(false);
   const links = [
     { href: '/dashboard', label: 'Reading room', icon: Library },
     { href: '/books', label: 'My library', icon: BookOpen },
@@ -120,7 +80,7 @@ function AppShell({ children, section }: { children: ReactNode; section: string 
           <div className="grid h-9 w-9 place-items-center rounded-full bg-[#d6ba7a] font-serif text-sm text-[#244334]">{user?.firstName?.[0] || user?.emailAddresses[0]?.emailAddress[0]?.toUpperCase() || 'R'}</div>
           <div className="min-w-0"><p data-testid="user-name-display" className="truncate text-xs font-medium">{user?.firstName || 'Reader'}{user?.lastName ? ` ${user.lastName}` : ''}</p><p data-testid="user-email-display" className="truncate text-[10px] text-[#aebfb0]">{user?.primaryEmailAddress?.emailAddress || user?.emailAddresses[0]?.emailAddress || 'Signed in'}</p></div>
         </div>
-        <button type="button" data-testid="button-sign-out" onClick={() => signOut({ redirectUrl: basePath || '/' })} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs text-[#d4dfd4] hover:bg-[#2a5543]"><LogOut size={15}/> Sign out</button>
+        <button type="button" data-testid="button-sign-out" disabled={leaving} aria-busy={leaving} onClick={async () => { setLeaving(true); await signOut(); setLocation('/', { replace: true }); }} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-xs text-[#d4dfd4] hover:bg-[#2a5543] disabled:opacity-60"><LogOut size={15}/> {leaving ? 'Signing out…' : 'Sign out'}</button>
       </div>
     </aside>
     {mobileNav && <button aria-label="Close navigation" onClick={() => setMobileNav(false)} className="fixed inset-0 z-30 bg-[#14281f]/40 md:hidden"/>}
@@ -175,28 +135,22 @@ function HomePage() {
 function RouteGate({ children }: { children: ReactNode }) {
   const { isSignedIn, isLoaded } = useAuth();
   if (!isLoaded) return <div className="min-h-[100dvh] bg-[#f2efe5] p-10"><div className="mx-auto max-w-5xl space-y-5"><div className="h-10 w-48 animate-pulse rounded bg-[#e4dfd2]"/><div className="h-48 animate-pulse rounded-2xl bg-[#e4dfd2]"/></div></div>;
-  return isSignedIn ? <>{children}</> : <Redirect to="/"/>;
+  return isSignedIn ? <>{children}</> : <Redirect to="/sign-in"/>;
 }
 
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
-  const { isLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
+function EnsureCurrentUser() {
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const { mutate: ensureCurrentUser } = useEnsureCurrentUser();
-  const qc = useQueryClient();
-  const prevUserIdRef = useRef<string | null | undefined>(undefined);
-  useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) qc.clear();
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, qc]);
-  useEffect(() => {
-    if (isLoaded && isSignedIn && user?.id) ensureCurrentUser();
-  }, [ensureCurrentUser, isLoaded, isSignedIn, user?.id]);
+  const ensureRef = useRef(ensureCurrentUser);
+  ensureRef.current = ensureCurrentUser;
+  useEffect(() => { if (isLoaded && isSignedIn && userId) ensureRef.current(); }, [isLoaded, isSignedIn, userId]);
   return null;
+}
+
+function SessionNotices() {
+  const { logoutError, dismissErrors } = useSession();
+  if (!logoutError) return null;
+  return <div role="alert" data-testid="error-sign-out" className="fixed bottom-4 left-1/2 z-[60] flex w-[min(92vw,520px)] -translate-x-1/2 items-start gap-3 rounded-2xl border border-[#e4c8be] bg-[#fbefeb] p-4 text-sm text-[#623e32] shadow-[0_18px_50px_rgba(26,54,40,.18)]"><CircleHelp size={18} className="mt-0.5 shrink-0 text-[#ad6553]"/><p className="flex-1 leading-6">{logoutError}</p><button type="button" data-testid="button-dismiss-sign-out-error" onClick={dismissErrors} aria-label="Dismiss" className="rounded-full p-1 hover:bg-[#f2dcd4]"><X size={15}/></button></div>;
 }
 
 function PageTitle({ eyebrow, title, sub, action }: { eyebrow: string; title: string; sub: string; action?: ReactNode }) {
@@ -415,9 +369,33 @@ function NextBook() {
   return <AppShell section="/next"><PageTitle eyebrow="The open question" title="What shall I read?" sub="Draw one book at random from your Want to read shelf, within whatever boundaries you set."/><NextBookPicker/></AppShell>;
 }
 
-function SignInPage() { return <div className="library-paper flex min-h-[100dvh] items-center justify-center bg-[#f1eddf] px-4 py-10"><div className="absolute left-8 top-7"><Link href="/" className="flex items-center gap-2 font-serif text-xl text-[#234b39] no-underline"><BookOpen size={20}/> Marginalia</Link></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`}/></div>; }
-function SignUpPage() { return <div className="library-paper flex min-h-[100dvh] items-center justify-center bg-[#f1eddf] px-4 py-10"><div className="absolute left-8 top-7"><Link href="/" className="flex items-center gap-2 font-serif text-xl text-[#234b39] no-underline"><BookOpen size={20}/> Marginalia</Link></div><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`}/></div>; }
-function HomeRedirect(){return <><Show when="signed-in"><Redirect to="/dashboard"/></Show><Show when="signed-out"><HomePage/></Show></>;}
+function AuthPanel({ mode }: { mode: 'sign-in' | 'sign-up' }) {
+  const { isSignedIn, isLoaded } = useAuth();
+  const { signIn, signingIn, loginError, restoreError, retryRestore } = useSession();
+  if (isLoaded && isSignedIn) return <Redirect to="/dashboard"/>;
+  const newcomer = mode === 'sign-up';
+  return <div className="library-paper relative flex min-h-[100dvh] items-center justify-center bg-[#f1eddf] px-4 py-24">
+    <div className="absolute left-6 top-7 md:left-10"><Link href="/" className="flex items-center gap-2 font-serif text-xl text-[#234b39] no-underline"><img src={`${assetBase}logo.svg`} alt="" className="h-7 w-7"/> Marginalia</Link></div>
+    <section aria-labelledby="auth-title" className="fade-up w-[460px] max-w-full rounded-[22px] border border-[#e1d9c8] bg-[#fbf8f1] p-7 shadow-[0_24px_70px_rgba(26,54,40,.16)] md:p-9">
+      <p className="font-mono text-[9px] uppercase tracking-[.22em] text-[#a17d50]">{newcomer ? 'A new reading room' : 'Return to your shelves'}</p>
+      <h1 id="auth-title" className="mt-2 font-serif text-4xl leading-[1.02] text-[#263e34]">{newcomer ? 'Make room for stories.' : 'Welcome back, reader.'}</h1>
+      <p className="mt-3 text-sm leading-6 text-[#718276]">Marginalia uses your Replit account to sign you in. {newcomer ? 'If you do not have one yet, Replit will let you create it in the next step, then send you straight back here.' : 'You will confirm on Replit, then return to your library.'} No separate password to remember.</p>
+      {(loginError || restoreError) && <div role="alert" data-testid="error-auth" className="mt-5 rounded-xl border border-[#ead0c9] bg-[#fbefeb] p-3.5 text-sm leading-6 text-[#8b332c]">{loginError || restoreError}{restoreError && !loginError && <button type="button" data-testid="button-retry-session" onClick={retryRestore} className="ml-2 font-semibold underline">Try again</button>}</div>}
+      <button type="button" data-testid="button-continue-replit" onClick={() => void signIn()} disabled={signingIn || !isLoaded} aria-busy={signingIn}
+        className="mt-6 flex w-full items-center justify-center gap-2.5 rounded-full bg-[#285342] px-6 py-3.5 text-sm font-semibold text-[#fbf8f1] transition hover:-translate-y-0.5 hover:bg-[#1f4536] disabled:translate-y-0 disabled:opacity-60">
+        {signingIn ? 'Opening Replit…' : !isLoaded ? 'Checking your session…' : <>Continue with Replit <ArrowRight size={16}/></>}
+      </button>
+      <p className="mt-3 text-center text-[11px] text-[#8b9588]">{newcomer ? <>Already reading here? <Link href="/sign-in" className="font-semibold text-[#285342]">Sign in</Link></> : <>New to Marginalia? <Link href="/sign-up" className="font-semibold text-[#285342]">Start a library</Link></>}</p>
+      <div className="mt-7 border-t border-[#e7e1d5] pt-5">
+        <p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a7950]">Signed in another way before?</p>
+        <p className="mt-2 text-xs leading-5 text-[#718075]">Libraries from the previous sign-in system are kept safely, but they are not linked automatically, even when the email address matches. Ask the site owner to link your earlier library to your Replit account.</p>
+      </div>
+    </section>
+  </div>;
+}
+function SignInPage() { return <AuthPanel mode="sign-in"/>; }
+function SignUpPage() { return <AuthPanel mode="sign-up"/>; }
+function HomeRedirect(){const {isLoaded,isSignedIn}=useAuth();if(!isLoaded)return <div className="min-h-[100dvh] bg-[#f1eddf]" aria-busy="true"/>;return isSignedIn?<Redirect to="/dashboard"/>:<HomePage/>;}
 function ProtectedDashboard(){return <RouteGate><Dashboard/></RouteGate>;}
 function ProtectedBooks(){return <RouteGate><BooksPage/></RouteGate>;}
 function ProtectedStarred(){return <RouteGate><BooksPage starredView/></RouteGate>;}
@@ -426,13 +404,11 @@ function ProtectedNext(){return <RouteGate><NextBook/></RouteGate>;}
 function ProtectedDetail(){const {id}=useParams<{id:string}>();return id?<RouteGate><BookDetail id={Number(id)}/></RouteGate>:<Redirect to="/books"/>;}
 function NotFoundPage(){return <div className="grid min-h-[100dvh] place-items-center bg-[#f2efe5] p-6 text-center"><div><p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#a17d50]">A misplaced volume</p><h1 className="mt-3 font-serif text-5xl text-[#274b3b]">This page isn't on our shelves.</h1><Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#315744] no-underline">Return to the reading room <ArrowRight size={15}/></Link></div></div>;}
 
-function ClerkRoutes(){
-  const [,setLocation]=useLocation();
-  return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={{signIn:{start:{title:'Welcome back, reader',subtitle:'Your books are right where you left them.'}},signUp:{start:{title:'Make room for stories',subtitle:'Begin a reading life worth remembering.'}}}} routerPush={to=>setLocation(stripBase(to))} routerReplace={to=>setLocation(stripBase(to),{replace:true})}>
-    <QueryClientProvider client={queryClient}><TooltipProvider><ClerkQueryClientCacheInvalidator/><Switch>
+function AppRoutes(){
+  return <QueryClientProvider client={queryClient}><AuthProvider><TooltipProvider><EnsureCurrentUser/><Switch>
       <Route path="/" component={HomeRedirect}/>
-      <Route path="/sign-in/*?" component={SignInPage}/>
-      <Route path="/sign-up/*?" component={SignUpPage}/>
+      <Route path="/sign-in" component={SignInPage}/>
+      <Route path="/sign-up" component={SignUpPage}/>
       <Route path="/dashboard" component={ProtectedDashboard}/>
       <Route path="/books" component={ProtectedBooks}/>
       <Route path="/starred" component={ProtectedStarred}/>
@@ -440,8 +416,7 @@ function ClerkRoutes(){
       <Route path="/shelf" component={ProtectedShelf}/>
       <Route path="/next" component={ProtectedNext}/>
       <Route component={NotFoundPage}/>
-    </Switch><Toaster/></TooltipProvider></QueryClientProvider>
-  </ClerkProvider>;
+    </Switch><SessionNotices/><Toaster/></TooltipProvider></AuthProvider></QueryClientProvider>;
 }
-function App(){return <WouterRouter base={basePath}><ClerkRoutes/></WouterRouter>;}
+function App(){return hashMode ? <WouterRouter hook={useHashLocation}><AppRoutes/></WouterRouter> : <WouterRouter base={basePath}><AppRoutes/></WouterRouter>;}
 export default App;

@@ -9,6 +9,63 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Current Replit-authenticated reader
+ */
+export const GetCurrentAuthUserResponse = zod.object({
+  "user": zod.union([zod.object({
+  "id": zod.string(),
+  "username": zod.string().nullable(),
+  "email": zod.string().nullable()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Exchange a one-time login code bound to the browser's PKCE proof
+ */
+export const exchangeBrowserLoginBodyCodeMin = 32;
+export const exchangeBrowserLoginBodyCodeMax = 128;
+
+export const exchangeBrowserLoginBodyVerifierMin = 43;
+export const exchangeBrowserLoginBodyVerifierMax = 128;
+
+
+
+export const ExchangeBrowserLoginBody = zod.object({
+  "code": zod.string().min(exchangeBrowserLoginBodyCodeMin).max(exchangeBrowserLoginBodyCodeMax),
+  "verifier": zod.string().min(exchangeBrowserLoginBodyVerifierMin).max(exchangeBrowserLoginBodyVerifierMax)
+})
+
+export const ExchangeBrowserLoginResponse = zod.object({
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.string(),
+  "username": zod.string().nullable(),
+  "email": zod.string().nullable()
+}),
+  "expiresAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Revoke the current application session
+ */
+export const LogoutBrowserSessionResponse = zod.void()
+
+
+/**
+ * @summary Begin Replit OIDC login with state, nonce, and PKCE
+ */
+export const BeginReplitLoginResponse = zod.void()
+
+
+/**
+ * @summary Verify the Replit login and return a one-time handoff code
+ */
+export const FinishReplitLoginResponse = zod.void()
+
+
+/**
  * Returns server health status
  * @summary Health check
  */
