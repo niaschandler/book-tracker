@@ -6,14 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { spineMetrics, type ShelfGroup } from '@/lib/bookshelf';
 
 const spineTones = [
-  { bg: '#285342', ink: '#f2e3b8' }, { bg: '#b8704c', ink: '#fff4dc' }, { bg: '#d0a953', ink: '#2c3d2f' },
+  { bg: '#2d5a3d', ink: '#f2e3b8' }, { bg: '#b8704c', ink: '#fff4dc' }, { bg: '#d0a953', ink: '#2c3d2f' },
   { bg: '#627f86', ink: '#f6efdc' }, { bg: '#8d4a45', ink: '#f6dfae' }, { bg: '#e3d1a5', ink: '#3a4b3c' },
 ];
 
 export function ShelfCover({ book, className = '' }: { book: Pick<Book, 'coverUrl' | 'title' | 'author' | 'genre'>; className?: string }) {
   const [failed, setFailed] = useState<string | null>(null);
   const showImg = !!book.coverUrl && failed !== book.coverUrl;
-  return <div className={`relative overflow-hidden bg-[#285342] ${className}`}>
+  return <div className={`relative overflow-hidden bg-[#2d5a3d] ${className}`}>
     {showImg ? <img className="h-full w-full object-cover" src={book.coverUrl!} alt={`Cover of ${book.title}`} onError={() => setFailed(book.coverUrl ?? null)} />
       : <div role="img" aria-label={`${book.title} by ${book.author || 'unknown author'} (no cover image)`} className="flex h-full flex-col justify-between border-[6px] border-double border-[#d7b66d]/50 p-3 text-[#f6ecd2]">
         <span className="font-mono text-[8px] uppercase tracking-[.2em] opacity-75">{book.genre || 'Genre not recorded'}</span>
@@ -50,7 +50,7 @@ export function BookshelfWall({ groups }: { groups: ShelfGroup<Book>[] }) {
     <div className="space-y-10">
       {groups.map((g) => <section key={g.key} aria-labelledby={`shelf-${g.key}`} data-testid={`shelf-${g.key}`}>
         <div className="mb-3 flex items-baseline gap-3">
-          <h2 id={`shelf-${g.key}`} className="font-serif text-2xl text-[#274b3b]">{g.label}</h2>
+          <h2 id={`shelf-${g.key}`} className="font-serif text-2xl text-[#3a1f14]">{g.label}</h2>
           <span className="font-mono text-[9px] uppercase tracking-[.18em] text-[#8b9588]">{g.books.length} {g.books.length === 1 ? 'volume' : 'volumes'}</span>
         </div>
         <div className="relative rounded-t-lg bg-[#5e3f28] px-3 pt-6 shadow-[inset_0_10px_22px_rgba(0,0,0,.35)] sm:px-5">
@@ -68,21 +68,21 @@ export function BookshelfWall({ groups }: { groups: ShelfGroup<Book>[] }) {
           event.preventDefault();
           opener.current.focus();
         }
-      }} className="w-[calc(100%_-_2rem)] max-w-xl border-[#d9d0bd] bg-[#faf8f1] p-6 sm:rounded-2xl motion-reduce:animate-none">
+      }} className="w-[calc(100%_-_2rem)] max-w-xl border-[#d0bb92] bg-[#f8f0de] p-6 sm:rounded-2xl motion-reduce:animate-none">
         {active && <div className="flex flex-col gap-5 sm:flex-row">
           <ShelfCover book={active} className="h-[190px] w-[128px] shrink-0 self-center rounded shadow-md sm:self-start" />
           <div className="min-w-0 flex-1">
             <p className="font-mono text-[9px] uppercase tracking-[.15em] text-[#a17d50]">{active.status!=='read'?(active.status==='reading'?'Owned · Currently reading':'Owned · Not yet read'):active.finishedOn ? `Finished ${new Date(active.finishedOn).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}` : 'Finish date not recorded'}</p>
-            <DialogTitle className="mt-2 font-serif text-3xl leading-tight text-[#263e34]">{active.title}</DialogTitle>
+            <DialogTitle className="mt-2 font-serif text-3xl leading-tight text-[#2e1d14]">{active.title}</DialogTitle>
             <DialogDescription className="mt-1 text-sm text-[#788477]">{(active.authors?.length ? active.authors.join(', ') : active.author) || 'Author unknown'}</DialogDescription>
             <dl className="mt-4 grid grid-cols-3 gap-2 border-y border-[#e3dccd] py-3 text-xs">
               <div><dt className="font-mono text-[8px] uppercase tracking-[.15em] text-[#8b9588]">Genre</dt><dd className="mt-1 text-[#3c5747]">{active.genre || 'Not recorded'}</dd></div>
               <div><dt className="font-mono text-[8px] uppercase tracking-[.15em] text-[#8b9588]">Pages</dt><dd className="mt-1 text-[#3c5747]">{active.pages ? active.pages.toLocaleString() : 'Unknown'}</dd></div>
               <div><dt className="font-mono text-[8px] uppercase tracking-[.15em] text-[#8b9588]">Rating</dt><dd className="mt-1 text-[#3c5747]">{active.rating ? `${active.rating} / 5` : 'Not rated'}</dd></div>
             </dl>
-            <p className="mt-4 line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-[#526a59]">{active.notes || 'No notes saved for this book yet.'}</p>
+            <p className="mt-4 line-clamp-4 whitespace-pre-wrap text-sm leading-6 text-[#5e4232]">{active.notes || 'No notes saved for this book yet.'}</p>
             <div className="mt-5 flex items-center gap-3">
-              <Link href={`/books/${active.id}`} data-testid="link-open-book-record" className="inline-flex items-center gap-2 rounded-full bg-[#285342] px-4 py-2.5 text-xs font-semibold text-[#fbf8f1] no-underline hover:bg-[#1f4536]">Open book record <ArrowRight size={14} /></Link>
+              <Link href={`/books/${active.id}`} data-testid="link-open-book-record" className="inline-flex items-center gap-2 rounded-full bg-[#2d5a3d] px-4 py-2.5 text-xs font-semibold text-[#f8f0de] no-underline hover:bg-[#234a31]">Open book record <ArrowRight size={14} /></Link>
             </div>
           </div>
         </div>}

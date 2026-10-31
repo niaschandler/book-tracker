@@ -9,7 +9,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { importFields, defaultImportMapping, mappedImportRows, type ImportMapping, type ImportSheet } from '@/lib/library-import';
 
-const buttonClass = 'rounded-full border border-[#ded7c8] px-4 py-2 text-xs text-[#285342] hover:bg-[#eee8dc] disabled:opacity-50';
+const buttonClass = 'rounded-full border border-[#d6c29c] px-4 py-2 text-xs text-[#2d5a3d] hover:bg-[#eee8dc] disabled:opacity-50';
 
 export function ImportLibraryButton() {
   const { userId } = useAuth();
@@ -64,15 +64,15 @@ function ImportLibraryFlow({ owner }: { owner: string }) {
   return <div className="flex max-w-sm flex-col gap-1.5">
     <button type="button" className={`${buttonClass} inline-flex items-center justify-center gap-1.5`}
       data-testid="button-import-library" onClick={() => changeOpen(true)}><Upload size={13} aria-hidden="true"/>Import spreadsheet</button>
-    <span className="text-[10px] text-[#718075]">Excel (.xlsx) · Review before adding</span>
-    {notice && <p role="status" className="text-[11px] text-[#526a59]">{notice}</p>}
+    <span className="text-[10px] text-[#76604f]">Excel (.xlsx) · Review before adding</span>
+    {notice && <p role="status" className="text-[11px] text-[#5e4232]">{notice}</p>}
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogContent className="max-w-3xl bg-[#faf8f1]" aria-busy={busy}
+      <DialogContent className="max-w-3xl bg-[#f8f0de]" aria-busy={busy}
         onEscapeKeyDown={event => { if (busy) event.preventDefault(); }}
         onPointerDownOutside={event => { if (busy) event.preventDefault(); }}>
         <DialogTitle>Bring your books into Reading Room</DialogTitle>
         <DialogDescription>Choose an Excel (.xlsx) reading list, including a Reading Room export. Nothing is saved until you confirm. Existing books are never overwritten.</DialogDescription>
-        <label className="text-sm text-[#285342]">Reading list spreadsheet
+        <label className="text-sm text-[#2d5a3d]">Reading list spreadsheet
           <input type="file" accept=".xlsx" disabled={busy} data-testid="input-import-file" className="mt-2 block w-full text-xs"
             onChange={event => {
               const file = event.target.files?.[0];
@@ -88,16 +88,16 @@ function ImportLibraryFlow({ owner }: { owner: string }) {
             }}/>
         </label>
         {sheet && <>
-          <p className="text-xs text-[#526a59]">{sheet.rows.length} rows found. Match your columns below. Leave fields you don’t have as “Not imported”. Unmapped status defaults to Want to read; ownership and stars default to No. Source Book IDs are not used as local IDs.</p>
+          <p className="text-xs text-[#5e4232]">{sheet.rows.length} rows found. Match your columns below. Leave fields you don’t have as “Not imported”. Unmapped status defaults to Want to read; ownership and stars default to No. Source Book IDs are not used as local IDs.</p>
           <fieldset disabled={busy} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <legend className="mb-2 text-sm font-semibold">Column mappings</legend>
-            {importFields.map(([field, label]) => <label key={field} className="text-xs text-[#285342]">{label}{field === 'title' ? ' (required)' : ''}
+            {importFields.map(([field, label]) => <label key={field} className="text-xs text-[#2d5a3d]">{label}{field === 'title' ? ' (required)' : ''}
               <select aria-label={`Map ${label}`} className="form-input mt-1" value={mapping[field] ?? ''}
                 onChange={event => { setMapping(current => ({ ...current, [field]: event.target.value })); setPreview(undefined); setPayload(undefined); setError(''); }}>
                 <option value="">Not imported</option>
                 {sheet.headers.map((header, index) => <option key={index} value={String(index)}>{header || '(blank heading)'} · Column {index + 1}</option>)}
               </select>
-              {mapping[field] !== '' && <span className="mt-1 block truncate text-[10px] text-[#718075]">Example: {sheet.rows[0]?.cells[Number(mapping[field])] || '(blank)'}</span>}
+              {mapping[field] !== '' && <span className="mt-1 block truncate text-[10px] text-[#76604f]">Example: {sheet.rows[0]?.cells[Number(mapping[field])] || '(blank)'}</span>}
             </label>)}
           </fieldset>
           <button type="button" className={buttonClass} disabled={busy} data-testid="button-preview-import"
@@ -110,20 +110,20 @@ function ImportLibraryFlow({ owner }: { owner: string }) {
             })}>{busy ? 'Working…' : 'Preview import'}</button>
         </>}
         {preview && <>
-          <div role="status" className="rounded-lg border border-[#ded7c8] p-3 text-sm">
+          <div role="status" className="rounded-lg border border-[#d6c29c] p-3 text-sm">
             {preview.ready} ready to add · {preview.duplicates} duplicates skipped · {preview.invalid} invalid rows skipped
           </div>
-          <div className="max-h-64 overflow-auto rounded-lg border border-[#ded7c8]" tabIndex={0} aria-label="Import row preview">
+          <div className="max-h-64 overflow-auto rounded-lg border border-[#d6c29c]" tabIndex={0} aria-label="Import row preview">
             <table className="w-full text-left text-xs"><thead className="bg-[#eee8dc]"><tr><th className="p-2">Row</th><th className="p-2">Title</th><th className="p-2">Result</th></tr></thead>
-              <tbody>{preview.rows.map((row, index) => <tr key={index} className="border-t border-[#ded7c8]">
+              <tbody>{preview.rows.map((row, index) => <tr key={index} className="border-t border-[#d6c29c]">
                 <td className="p-2">{row.row}</td><td className="p-2">{row.title}</td>
                 <td className="p-2">{row.disposition === 'ready' ? 'Ready to add' : row.disposition === 'duplicate' ? 'Duplicate — skipped' : 'Invalid — skipped'}
                   {row.problems.map((problem, i) => <p key={i} className="mt-1 text-[#a44e37]">{problem}</p>)}</td>
               </tr>)}</tbody></table>
           </div>
-          <p className="text-xs text-[#526a59]">Only ready rows will be added. Fix invalid rows in your spreadsheet and choose the file again, or continue without them. Duplicates match ISBN, Open Library ID, or title and authors in your own library and earlier file rows.</p>
+          <p className="text-xs text-[#5e4232]">Only ready rows will be added. Fix invalid rows in your spreadsheet and choose the file again, or continue without them. Duplicates match ISBN, Open Library ID, or title and authors in your own library and earlier file rows.</p>
           <button type="button" data-testid="button-confirm-import" disabled={busy || !preview.ready}
-            className="rounded-full bg-[#285342] px-5 py-3 text-sm text-white disabled:opacity-50"
+            className="rounded-full bg-[#2d5a3d] px-5 py-3 text-sm text-white disabled:opacity-50"
             onClick={() => void run(async active => {
               if (!payload) return;
               const result = await confirmMutation.mutateAsync({ data: { rows: payload, previewToken: preview.previewToken } });

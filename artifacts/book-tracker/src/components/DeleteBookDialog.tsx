@@ -34,7 +34,7 @@ export function DeleteBookDialog({ book, onClose, onDeleted }: Props) {
   return (
     <AlertDialog open={book !== null} onOpenChange={(open) => { if (!open) close(); }}>
       <AlertDialogContent
-        className="w-[calc(100%_-_2rem)] max-w-md rounded-[22px] border-[#d9d0bd] bg-[#faf8f1] text-[#263e34]"
+        className="w-[calc(100%_-_2rem)] max-w-md rounded-[22px] border-[#d0bb92] bg-[#f8f0de] text-[#2e1d14]"
         onEscapeKeyDown={(event) => { if (remove.isPending) event.preventDefault(); }}
         aria-busy={remove.isPending}
       >
