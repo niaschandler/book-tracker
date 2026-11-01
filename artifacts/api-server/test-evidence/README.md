@@ -1,21 +1,23 @@
-# Data isolation test evidence
+# Dashboard read-count test evidence
 
-These screenshots show the same integration test before and after restoring the reader ownership filter. The temporary code change was reverted and is not included in this branch.
+The integration test creates one authenticated reader with three book entries: one marked read, one in progress, and one on the want-to-read shelf. The dashboard should report 3 total books and 1 book read.
 
-## Controlled failure
-
-The test caught cross-user library data leaking into list, dashboard, and import-preview results.
-
-![Data isolation test failing](data-isolation-failing.jpg)
-
-## Passing after restore
-
-After restoring the per-user ownership filter, all 5 checks passed.
-
-![Data isolation test passing](data-isolation-passing.jpg)
-
-Run the test with:
+Run it with:
 
 ```sh
-pnpm --filter @workspace/api-server run test:data-isolation
+pnpm --filter @workspace/api-server run test:dashboard-read-count
 ```
+
+## Deliberately failing run
+
+The test failed when the dashboard calculation was temporarily changed to count every library entry as read: it returned 3 instead of 1. That temporary bug was reverted and is not included in this branch.
+
+![Failing dashboard read-count test](dashboard-read-count-failing.jpg)
+
+## Passing run after restore
+
+After restoring the [0mread-status filter, the same test passed with [0mreadCount = 1 and totalBooks = 3.
+
+![Passing dashboard read-count test](dashboard-read-count-passing.jpg)
+
+A real regression that this test catches is removing or changing the [0mstatus === "read"[0m filter in [0mcomputeDashboardSummary[0m, or setting the read count to the total number of library entries.
