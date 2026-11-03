@@ -11,7 +11,7 @@ import {
   type CatalogBook, type BookStatus,
 } from '@workspace/api-client-react';
 import {
-  ArrowLeft, ArrowRight, ArrowUpRight, BookOpen, Bookmark, Check,
+  ArrowLeft, ArrowRight, BookOpen, Bookmark, Check,
   CircleHelp, Compass, Library, LogOut,
   Menu, Plus, Search, SlidersHorizontal, Sparkles, Star, Trash2, X,
 } from 'lucide-react';
@@ -96,19 +96,19 @@ function AppShell({ children, section }: { children: ReactNode; section: string 
 
 function HomePage() {
   const { isSignedIn, isLoaded } = useAuth();
+  const { signIn, signingIn } = useSession();
   if (isLoaded && isSignedIn) return <Redirect to="/dashboard"/>;
   return <div className="min-h-[100dvh] overflow-hidden bg-[#efe4cf] text-[#2e1d14]">
     <div className="home-hero" style={{backgroundImage:`url(${assetBase}reading-room.png)`}}>
-    <header className="relative z-10 mx-auto flex max-w-[1360px] items-center justify-between px-6 py-6 md:px-12">
+    <header className="relative z-10 mx-auto flex max-w-[1360px] items-center px-6 py-6 md:px-12">
       <Link href="/" className="flex items-center gap-3 text-[#f6ead0] no-underline"><BookOpen size={23}/><span className="font-serif text-xl">Reading Room</span></Link>
-      <div className="flex items-center gap-5"><Link href="/sign-in" className="text-xs font-semibold text-[#f2d58e] no-underline">Sign in</Link><Link href="/sign-up" className="rounded-full bg-[#2d5a3d] ring-1 ring-[#e2c379]/50 px-5 py-2.5 text-xs font-semibold text-[#f8f2e3] no-underline hover:bg-[#234a31]">Make it yours</Link></div>
     </header>
     <section className="relative z-10 mx-auto flex min-h-[620px] max-w-[1360px] items-end px-6 pb-20 pt-10 md:px-12 md:pb-28">
       <div className="fade-up max-w-[640px] text-[#f6ead0]">
         <div className="mb-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[.23em] text-[#e2c379]"><span className="h-px w-9 bg-[#e2c379]"/>A home for every story</div>
         <h1 className="font-serif text-[clamp(56px,8vw,112px)] leading-[.85] tracking-[-.04em]">A life,<br/><em className="font-normal text-[#e8c27f]">well read.</em></h1>
         <p className="mt-8 max-w-[430px] text-[15px] leading-7 text-[#ecdcc0]">Keep the books that changed your mind, the ones waiting by your bedside, and the small details you never want to forget.</p>
-        <div className="mt-8 flex flex-wrap gap-3"><Link href="/sign-up" className="inline-flex items-center gap-3 rounded-full bg-[#2d5a3d] px-6 py-3.5 text-sm font-semibold text-[#f8efd9] no-underline ring-1 ring-[#e2c379]/50 transition hover:-translate-y-0.5 hover:bg-[#234a31]">Open your reading room <ArrowRight size={16}/></Link><Link href="/sign-in" className="inline-flex items-center gap-2 px-4 py-3 text-sm font-semibold text-[#f2d58e] no-underline">I have an account <ArrowUpRight size={15}/></Link></div>
+        <div className="mt-8"><button type="button" data-testid="button-home-github-sign-in" onClick={() => void signIn()} disabled={signingIn || !isLoaded} aria-busy={signingIn} className="inline-flex items-center gap-3 rounded-full bg-[#2d5a3d] px-6 py-3.5 text-sm font-semibold text-[#f8efd9] ring-1 ring-[#e2c379]/50 transition hover:-translate-y-0.5 hover:bg-[#234a31] disabled:translate-y-0 disabled:opacity-60">{signingIn ? 'Opening GitHub…' : !isLoaded ? 'Checking your session…' : <>Sign in with GitHub <ArrowRight size={16}/></>}</button></div>
       </div>
     </section>
     </div>
@@ -377,10 +377,6 @@ function AuthPanel({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         {signingIn ? 'Opening GitHub…' : !isLoaded ? 'Checking your session…' : <>Continue with GitHub <ArrowRight size={16}/></>}
       </button>
       <p className="mt-3 text-center text-[11px] text-[#76604f]">{newcomer ? <>Already reading here? <Link href="/sign-in" className="font-semibold text-[#2d5a3d]">Sign in</Link></> : <>New to Reading Room? <Link href="/sign-up" className="font-semibold text-[#2d5a3d]">Start a library</Link></>}</p>
-      <div className="mt-7 border-t border-[#e7e1d5] pt-5">
-        <p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a7950]">Signed in another way before?</p>
-        <p className="mt-2 text-xs leading-5 text-[#76604f]">Libraries from the previous sign-in system are kept safely, but they are not linked automatically, even when the email address matches. Ask the site owner to link your earlier library to your GitHub account.</p>
-      </div>
     </section>
   </div>;
 }
