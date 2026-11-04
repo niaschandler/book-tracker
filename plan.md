@@ -23,3 +23,16 @@ A real list of things I've read and meant to read
 5. Technologies | I will use Replit as the coding agent because I've never used anything else. I'll host it in github because I think that will be more effective than a Replit app. Users will sign up with an email and password. I'd like to pull book data from openlibrary.org so that book data is more complete and can pull an image of the covers.
 6. Design | I want to feel like I've walked into a grand library, like at a prestigious university or an old public library in a big city. 
 7. Risks and cuts | I'm not sure how to build the virtual bookshelf, so if I run out of time I will not make that, or will make it much simpler than I'd like, if I can't figure out how to make what I'm envisioning.
+
+8. Plan vs. Reality
+Planned feature | Shipped / Changed / Cut	Status (Done/Backlogged) | Learning	What changed and why (one line)
+Login | Done | It exists and works, but it is hosted via GitHub OAuth, which is not something I knew about before. I thought it would be simplest to keep as much of the app in one place as possible.
+Data | Done | It's a bit more complicated than what I had envisioned, but it's there.
+Add book | Done | The feature itself works, but I had suggested having an API to pull external book data and Replit just made it happen without explicit prompting.
+Validation | Done | The only required fields are Title and Author, so this is minor.
+Stars | Done | The stars feature works as intended.
+Find Things | Done | You can filter books in two ways, search for anything, and sort by three categories.
+Dashboard | Done | Shows summary statistics as planned.
+Virtual Bookshelf | Done | I thought this might be asking too much, but it makes little "books" on a "shelf" so I'm happy with it.
+Random book picker | Done | This randomly picks from books you list as "Want to read" not all books in the world, so it is somewhat limited, but it does work.
+Export | Done | You can take your data with you if you want to do more with it in Excel or use it offline. You can also import data in the same format, which I had not planned for.

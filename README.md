@@ -1,6 +1,6 @@
 # Reading Room
 
-A real list of books I have read, own, and hope to read. Reading Room is a private reading library built for collecting books, keeping reading notes, and finding the next good read.
+A real list of books I have read, own, and hope to read. Reading Room is a private reading library built for collecting books, keeping reading notes, and finding the next good read. https://niaschandler.github.io/book-tracker
 
 ## Product vision
 
@@ -65,5 +65,3 @@ publishing workflow, and existing-account linking instructions.
 - Required book fields show a friendly validation message when missing.
 - Stars belong to the user who added them.
 - Exported records can be opened in spreadsheet software.
-
-The virtual bookshelf, mood picker, and Open Library lookup are implemented as first-version features.
